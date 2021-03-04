@@ -7,14 +7,18 @@ library(mixOmics) # for CLR
 library(pheatmap) # for heatmap
 
 # Prepare input data and get data ready
-phyla_dataset_d3 <- read.csv("/file_Path_To/phyla_dataset_d3.csv", row.names=1)
+phyla_dataset_d3 <- read.csv("/file_Path_To/phyla_dataset_d3.csv",
+                             row.names=1,
+                             header=T,
+                             check.names=FALSE)
 phyla.count <- data.matrix(phyla_dataset_d3[,1:1177], rownames.force = NA)
 phyla.metadata <- phyla_dataset_d3[,1178:1183]
 
 #************************** Setting Parameters *********************************#
 # Set parameters
 # The threshold 0.01 denotes the frequency of 0.01 %
-frequency_filtering_threshold <- 0.01
+# frequency_filtering_threshold <- 0.01 # Frequency is a bit of indirect! Using the count number.
+totalCount_threshold <- 5
 # Color codes for heatmap visualization
 batch_color_col_site <- c('OSCCAR' = 'lightsalmon2', 
                           'PRISM' = 'blue',
@@ -61,14 +65,15 @@ phyla.group <- as.factor(observing_group)
 names(phyla.group) <- row.names(phyla.metadata)
 
 # Prefiltering basing on the frequency of the genus
-phyla.index.keep <- which(colSums(phyla.count)*100/(sum(colSums(phyla.count))) > frequency_filtering_threshold)
+#phyla.index.keep <- which(colSums(phyla.count)*100/(sum(colSums(phyla.count))) > frequency_filtering_threshold)
+phyla.index.keep <- which((colSums(phyla.count)) > totalCount_threshold)
 phyla.count.keep.ori <- phyla.count[, phyla.index.keep]
 # Re-organize the genus name (because it's too long to visualize)
 extracted_new_colName <- colnames(phyla.count.keep.ori)
 i<-1
 for (name in extracted_new_colName){
   name_list <- list()
-  name_list <- strsplit(name, ".", fixed = TRUE)
+  name_list <- strsplit(name, ";", fixed = TRUE)
   firstName = name_list[[1]][1]
   lastName = ""
   name_list_Rev <- rev(name_list[[1]])
