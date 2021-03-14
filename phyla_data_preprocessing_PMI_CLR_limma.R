@@ -8,7 +8,6 @@
 #===============================================================================
 
 library(limma) # removeBatchEffect (LIMMA)
-library(sva) # ComBat
 library(mixOmics) # CLR
 
 phyla_dataset_d3 <- read.csv("/file_Path_To/phyla_dataset_d3.csv", 
