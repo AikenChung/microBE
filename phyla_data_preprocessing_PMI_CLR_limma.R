@@ -94,10 +94,10 @@ phyla.limma <- t(removeBatchEffect(t(phyla.clr), batch = phyla.batch,
 
 
 # Saving the filtered CLR data (before and After BE)
-phyla.clr <- cbind(phyla.clr,phyla.metadata)
-phyla.limma <- cbind(phyla.limma,phyla.metadata)
 phyla.clr.round <- round(phyla.clr[,1:1177], digits = 4)
 phyla.limma.round <- round(phyla.limma[,1:1177], digits = 4)
+phyla.clr.round <- cbind(phyla.clr.round,phyla.metadata)
+phyla.limma.round <- cbind(phyla.limma.round,phyla.metadata)
 write.csv(phyla.clr.round,noBE_removal_fileName, row.names = TRUE)
 write.csv(phyla.limma.round,BE_removal_fileName, row.names = TRUE)
 
