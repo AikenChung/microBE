@@ -92,6 +92,26 @@ phyla.limma <- t(removeBatchEffect(t(phyla.clr), batch = phyla.batch,
 
 #========================= End of Batch Effect Correction=====================
 
+# Function for data split
+data_split <- function(data, fileName_prefix1, fileName_prefix2){
+  small_15_seq <- seq(1,dim(data)[1],7)
+  small_85_seq <- seq(1,dim(data)[1],1)
+  small_85_seq <- subset(small_85_seq, !(small_85_seq %in% small_15_seq))
+  data_15p <- data[small_15_seq,]
+  data_85p <- data[small_85_seq,]
+  print("length(small_15_seq): ")
+  print(length(small_15_seq))
+  print("length(small_85_seq): ")
+  print(length(small_85_seq))
+  name_15p <-paste(c(fileName_prefix1,length(small_15_seq)),collapse = "")
+  name_15p <-paste(name_15p,fileName_prefix2,collapse = "")
+  fileName_15p <-paste(name_15p,"_15p.csv",collapse = "")
+  name_85p <-paste(c(fileName_prefix1,length(small_85_seq)),collapse = "")
+  name_85p <-paste(name_85p,fileName_prefix2,collapse = "")
+  fileName_85p <-paste(name_85p,"_85p.csv",collapse = "")
+  write.csv(data_15p,fileName_15p, row.names = TRUE)
+  write.csv(data_85p,fileName_85p, row.names = TRUE)
+}
 
 # Saving the filtered CLR data (before and After BE)
 phyla.clr.round <- round(phyla.clr[,1:1177], digits = 4)
@@ -101,4 +121,7 @@ phyla.limma.round <- cbind(phyla.limma.round,phyla.metadata)
 write.csv(phyla.clr.round,noBE_removal_fileName, row.names = TRUE)
 write.csv(phyla.limma.round,BE_removal_fileName, row.names = TRUE)
 
+# Split data into 85% for taining and validating, and 15% for testing
+data_split(phyla.clr.round,"phyla_all_","x1177_PMI_threshold_0_clr")
+data_split(phyla.limma.round,"phyla_all_","x1177_PMI_threshold_0_clr_limma")
 
