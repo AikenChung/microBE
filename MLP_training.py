@@ -250,7 +250,7 @@ def compute_accuracy(loader, net):
     )
     return accuracy_compute_history
 
-def writeResult(fileName, dataObj, modelName, testingFileName):
+def write_result(fileName, dataObj, modelName, testingFileName):
     with open(fileName, 'w') as f:
         theFirstLine = 'Model file: '+modelName+'\n'
         f.write(theFirstLine)
@@ -285,9 +285,9 @@ train_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_train
 validation_dataset_metric = compute_accuracy(validate_loader, classifierMLP)
 validation_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_validation_result_metric.txt"
 
-writeResult(train_dataset_metric_nameToSave, train_dataset_metric, fileNameToSave_base, train_base_file)
+write_result(train_dataset_metric_nameToSave, train_dataset_metric, fileNameToSave_base, train_base_file)
 validationFileName = train_base_file[0:len(train_base_file)-4]+"_validation"
-writeResult(validation_dataset_metric_nameToSave, validation_dataset_metric, fileNameToSave_base, validationFileName)
+write_result(validation_dataset_metric_nameToSave, validation_dataset_metric, fileNameToSave_base, validationFileName)
         
 print('Accuracy of the MLP on the ' + str(len(train_dataset)) + ' train samples: %d %%' % train_dataset_metric[0]["Accuracy"])
 
