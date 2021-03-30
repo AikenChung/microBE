@@ -76,6 +76,15 @@ class PhylaDataset(Dataset):
         self.len = phyla_input.shape[0]
         self.count_data = from_numpy(phyla_input[:, 0:-1])
         self.diagnosis_data = from_numpy(phyla_input[:, [-1]]) # 0: Control, 1: IBD
+        # feature-wise normalization
+        self.count_data = self.normalization(self.count_data)
+
+    def normalization(self, inputTensor):
+        # feature-wise normalization
+        colMin = inputTensor.min(0, keepdim=True)[0]
+        colMax = inputTensor.max(0, keepdim=True)[0]    
+        outputTensor = (inputTensor - colMin) / (colMax - colMin)
+        return outputTensor
 
     def __getitem__(self, index):
         samples = self.count_data[index]
@@ -206,17 +215,17 @@ Precision = TP / (TP+FP)
 F1-score = (2*Precision*Recall) / (Precision+Recall)
 MCC = (TP*TN - FP*FN) / sqrt((TP+FN)*(TP+FP)*(TN+FN)*(TN+FP))
 """
-
 def compute_accuracy(loader, net):
-
     accuracy_compute_history = []
     TP = 0
     TN = 0
     FP = 0
     FN = 0
+
     with torch.no_grad():      
         for data in loader:
             samples, labels = data
+            samples = samples.to(device)
             outputs = net(samples)           
             for i in range(labels.shape[0]):
                 sample_val = labels[i,0]
@@ -224,29 +233,51 @@ def compute_accuracy(loader, net):
                 if sample_val == 1:
                     if predict_val>0.5:
                         TP = TP + 1
-                    else:
-                        FN = FN + 1
-                elif sample_val == 0:
                     if predict_val <= 0.5:
                         TN = TN + 1
                     else:
                         FP = FP + 1
+    recall = 0
+    specificity = 0
+    precision = 0
+    accuracy = 0
+    f1 = 0
+    mcc = 0    
     if (TP+FN) != 0:
         recall = TP/(TP+FN) # sensitivity
+    else:
+        recall = 0
     if (TN+FP) != 0:
         specificity = TN/(TN+FP)
+    else:
+        specificity = 0
     if (TP+FP) != 0:
         precision = TP/(TP+FP)
+    else:
+        precision = 0
     if (TP+TN+FP+FN) != 0:    
         accuracy = 100*(TP+TN)/(TP+TN+FP+FN)
+    else:
+        precision = 0
     if (precision+recall) != 0:
         f1 = (2*precision*recall)/(precision+recall)
-    mcc = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))  # Matthews correlation coefficient
+    else:
+        f1 = 0
+    # Matthews correlation coefficient
+    if ((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN) == 0):
+        mcc = 0
+    else:
+        mcc = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)) 
+    
     accuracy_compute_history.append(
-        {"TP": TP, "TN": TN, "FP":FP, "FN": FN,
-         "Recall":recall, "Specificity":specificity,
-         "Precision":precision, "Accuracy":accuracy,
-         "F1-score":f1, "MCC":mcc}
+        {"Accuracy":accuracy,
+         "Precision":precision,
+         "Recall":recall,
+         "F1-score":f1,
+         "MCC":mcc,
+         "Specificity":specificity,
+         "TP": TP, "TN": TN, "FP":FP, "FN": FN
+         }
     )
     return accuracy_compute_history
 

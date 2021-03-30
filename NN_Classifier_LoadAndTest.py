@@ -60,20 +60,26 @@ class PhylaDataset(Dataset):
     """
     # Initialize your data, download, etc.
     def __init__(self, inputFile):
-        ori_BE_data = pd.read_csv(inputFile)
-        phyla_BE_input = ori_BE_data[ori_BE_data.columns[1:args.feature_Num+1]]
-        phyla_BE_input = phyla_BE_input.assign(diagnosis=ori_BE_data[ori_BE_data.columns[args.feature_Num+2]])
-        phyla_BE_input = phyla_BE_input.to_numpy(dtype=np.float32)
-        self.len = phyla_BE_input.shape[0]
-        self.count_data_raw = from_numpy(phyla_BE_input[:, 0:-1])
-        self.diagnosis_data_raw = from_numpy(phyla_BE_input[:, [-1]]) # 0: Control, 1: IBD
-        self.count_data_BE = from_numpy(phyla_BE_input[:, 0:-1])
-        self.diagnosis_data_BE = from_numpy(phyla_BE_input[:, [-1]]) # 0: Control, 1: IBD
+        ori_data = pd.read_csv(inputFile)
+        phyla_input = ori_data[ori_data.columns[1:args.feature_Num+1]]
+        phyla_input = phyla_input.assign(diagnosis=ori_data[ori_data.columns[args.feature_Num+2]])
+        phyla_input = phyla_input.to_numpy(dtype=np.float32)
+        self.len = phyla_input.shape[0]
+        self.count_data = from_numpy(phyla_input[:, 0:-1])
+        self.diagnosis_data = from_numpy(phyla_input[:, [-1]]) # 0: Control, 1: IBD
+        # feature-wise normalization
+        self.count_data = self.normalization(self.count_data)
+
+    def normalization(self, inputTensor):
+        # feature-wise normalization
+        colMin = inputTensor.min(0, keepdim=True)[0]
+        colMax = inputTensor.max(0, keepdim=True)[0]    
+        outputTensor = (inputTensor - colMin) / (colMax - colMin)
+        return outputTensor
 
     def __getitem__(self, index):
-        #return self.count_data_raw[index], self.count_data_BE[index]
-        samples = self.count_data_BE[index]
-        labels = self.diagnosis_data_BE[index]
+        samples = self.count_data[index]
+        labels = self.diagnosis_data[index]
         return samples, labels
 
     def __len__(self):
@@ -95,15 +101,16 @@ MCC = (TP*TN - FP*FN) / sqrt((TP+FN)*(TP+FP)*(TN+FN)*(TN+FP))
 
 """
 def compute_accuracy(loader, net):
-
     accuracy_compute_history = []
     TP = 0
     TN = 0
     FP = 0
     FN = 0
+
     with torch.no_grad():      
         for data in loader:
             samples, labels = data
+            samples = samples.to(device)
             outputs = net(samples)           
             for i in range(labels.shape[0]):
                 sample_val = labels[i,0]
@@ -111,29 +118,51 @@ def compute_accuracy(loader, net):
                 if sample_val == 1:
                     if predict_val>0.5:
                         TP = TP + 1
-                    else:
-                        FN = FN + 1
-                elif sample_val == 0:
                     if predict_val <= 0.5:
                         TN = TN + 1
                     else:
                         FP = FP + 1
+    recall = 0
+    specificity = 0
+    precision = 0
+    accuracy = 0
+    f1 = 0
+    mcc = 0    
     if (TP+FN) != 0:
         recall = TP/(TP+FN) # sensitivity
+    else:
+        recall = 0
     if (TN+FP) != 0:
         specificity = TN/(TN+FP)
+    else:
+        specificity = 0
     if (TP+FP) != 0:
         precision = TP/(TP+FP)
+    else:
+        precision = 0
     if (TP+TN+FP+FN) != 0:    
         accuracy = 100*(TP+TN)/(TP+TN+FP+FN)
+    else:
+        precision = 0
     if (precision+recall) != 0:
         f1 = (2*precision*recall)/(precision+recall)
-    mcc = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))  # Matthews correlation coefficient
+    else:
+        f1 = 0
+    # Matthews correlation coefficient
+    if ((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN) == 0):
+        mcc = 0
+    else:
+        mcc = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)) 
+    
     accuracy_compute_history.append(
-        {"TP": TP, "TN": TN, "FP":FP, "FN": FN,
-         "Recall":recall, "Specificity":specificity,
-         "Precision":precision, "Accuracy":accuracy,
-         "F1-score":f1, "MCC":mcc}
+        {"Accuracy":accuracy,
+         "Precision":precision,
+         "Recall":recall,
+         "F1-score":f1,
+         "MCC":mcc,
+         "Specificity":specificity,
+         "TP": TP, "TN": TN, "FP":FP, "FN": FN
+         }
     )
     return accuracy_compute_history
 
