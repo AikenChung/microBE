@@ -11,14 +11,14 @@ import phylaMLP
 
 
 #================================== Setting ==================================
-if not os.path.exists('./data/MLP_testResults'):
-    os.makedirs('./data/MLP_testResults')
+if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data/MLP_testResults'):
+    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data/MLP_testResults')
     
-resultFilePath = './data/MLP_testResults/'    
+resultFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_testResults/'    
 
 # Load the saved MLP model
-modelFilePath = './data/MLP_trainedModels/'
-modelFileName = 'MLP_1177_128_32_1_Adam_lr_0.001_MSELoss_bSize32_epoch5000_phyla_biopsy_noCS_plsda_BE.pt'
+modelFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels/'
+modelFileName = 'MLP_1177_128_32_1_Adam_lr_0.001_MSELoss_bSize32_epoch5000_phyla_stool_noNC_no_BE.pt'
 
 # Define the parameters according to the loaded model
 args = easydict.EasyDict({
@@ -31,9 +31,9 @@ args = easydict.EasyDict({
 })
 
 # Define the file to test
-testing_file = './phyla_biopsy_noCS_209x1177_PMI_threshold_0_clr_plsda_15p.csv'
+testing_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.csv'
 test_data_prefix = 'phyla_biopsy_noCS'
-test_data_surfix_BE_method = 'plsda_BE'
+test_data_surfix_BE_method = 'no_BE'
 
 fileNameToSave_base = (modelFileName[0:len(modelFileName)-3]+
                                  '_vs_'+test_data_prefix+'_'+
@@ -191,10 +191,15 @@ test_loader = DataLoader(test_dataset,
 
 
 # Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, Model_for_Test)
+test_dataset_metric = compute_accuracy(test_loader, Model_for_Test.to(device))
 # Save the testing metrics to a text file
 test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
 write_result(test_dataset_metric_nameToSave, test_dataset_metric, modelFileName, testing_file)
 
-
+print(testing_file)
+print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
+print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
+print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
+print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
+print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
 
