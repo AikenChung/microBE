@@ -143,7 +143,7 @@ def compute_accuracy(loader, net):
     if (TP+TN+FP+FN) != 0:    
         accuracy = 100*(TP+TN)/(TP+TN+FP+FN)
     else:
-        precision = 0
+        accuracy = 0
     if (precision+recall) != 0:
         f1 = (2*precision*recall)/(precision+recall)
     else:
