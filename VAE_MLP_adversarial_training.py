@@ -138,20 +138,6 @@ class MLP(nn.Module):
         out = torch.sigmoid(out)
         return out
 
-# Load the file of the trained model
-loadedModel_mlp = torch.load(modelFileName_loaded_mlp)
-# Initiate a model object with the same architecture of the loaded model 
-Model_mlp = MLP(args_loaded_mlp.feature_Num, args_loaded_mlp.hidden_dim, 
-                         args_loaded_mlp.mlp_hidden_layers_num, 
-                         args_loaded_mlp.pre_output_layer_dim, args_loaded_mlp.output_dim)
-# Put the loaded model into the initiated model object
-Model_mlp.load_state_dict(loadedModel_mlp[ 'model' ])
-
-
-# sets device for model and PyTorch tensors
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 class Phyla_VAE_Dataset(Dataset):
     """ Phyla dataset"""
@@ -226,9 +212,6 @@ and the **validation set** will be used for evaluation.
 First, let us compute the number of samples to put in each split. 
 Here we choose to keep 80\% of the samples for training and 20\% for validating.
 """
-
-# starting time
-start = time.time()
 
 
 # VAE model
@@ -561,6 +544,21 @@ def write_result(fileName, dataObj, vae_modelName, mlp_modelName, testingFileNam
             strToWrite = "{0}: {1}\n".format(item, np.round(dataObj[0][item], decimals=2))
             f.write(strToWrite)
 
+# starting time
+start = time.time()
+
+# Load the file of the trained model
+loadedModel_mlp = torch.load(modelFileName_loaded_mlp)
+# Initiate a model object with the same architecture of the loaded model 
+Model_mlp = MLP(args_loaded_mlp.feature_Num, args_loaded_mlp.hidden_dim, 
+                         args_loaded_mlp.mlp_hidden_layers_num, 
+                         args_loaded_mlp.pre_output_layer_dim, args_loaded_mlp.output_dim)
+# Put the loaded model into the initiated model object
+Model_mlp.load_state_dict(loadedModel_mlp[ 'model' ])
+
+# sets device for model and PyTorch tensors
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
 VAE-MLP Adversarial Training Process
@@ -585,7 +583,6 @@ train_loader = DataLoader(train_dataset, batch_size=args_vae.batch_size, shuffle
 validation_loader = DataLoader(validation_dataset, batch_size=args_vae.batch_size, shuffle=True)
 
 
-
 #criterion = nn.BCELoss()
 criterion = nn.BCEWithLogitsLoss()
 
@@ -598,7 +595,6 @@ varAutoEncoder = VarAutoEncoder(input_size=args_vae.feature_Num,
 discriminatorMLP = MLP(args_mlp.feature_Num, args_mlp.hidden_dim, 
                          args_mlp.mlp_hidden_layers_num, 
                          args_mlp.pre_output_layer_dim, args_mlp.output_dim)
-
 
 # For printing out the structure of VAE
 varAutoEncoder.to(device)
@@ -632,7 +628,6 @@ fig_trainHistory.savefig(training_history_plotName)
 # end time
 end = time.time()
 totalSeconds = round(end - start)
-
 
 print(f"Runtime of the program is {totalSeconds} seconds")
 
