@@ -15,7 +15,13 @@ import easydict
 import phylaMLP
 
 #================================== Setting ==================================
-train_base_file = '/content/gdrive/MyDrive/Colab Notebooks/phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
+base_path = './'
+usingGoogleCloud = True
+
+if usingGoogleCloud :
+    base_path = '/content/gdrive/My Drive/Colab Notebooks/'
+
+train_base_file = base_path+'phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
 train_data_prefix = 'phyla_stool_noNC'
 train_data_surfix_BE_method = 'no_BE'
 
@@ -42,17 +48,17 @@ fileNameToSave_base = ('MLP_'+ str(args.feature_Num) +'_'+
                                str(args.epochs) + '_'+train_data_prefix+'_'+
                                train_data_surfix_BE_method)
 
-if not os.path.exists('/content/gdrive/MyDrive/Colab Notebooks/data'):
-    os.makedirs('/content/gdrive/MyDrive/Colab Notebooks/data')
+if not os.path.exists(base_path+'data'):
+    os.makedirs(base_path+'data')
 
-if not os.path.exists('/content/gdrive/MyDrive/Colab Notebooks/data/MLP_trainedModels'):
-    os.makedirs('/content/gdrive/MyDrive/Colab Notebooks/data/MLP_trainedModels')
+if not os.path.exists(base_path+'data/MLP_trainedModels'):
+    os.makedirs(base_path+'data/MLP_trainedModels')
 
-if not os.path.exists('/content/gdrive/MyDrive/Colab Notebooks/data/MLP_trainedResults'):
-    os.makedirs('/content/gdrive/MyDrive/Colab Notebooks/data/MLP_trainedResults')
+if not os.path.exists(base_path+'data/MLP_trainedResults'):
+    os.makedirs(base_path+'data/MLP_trainedResults')
     
-modelFilePath = '/content/gdrive/MyDrive/Colab Notebooks/data/MLP_trainedModels/'
-resultFilePath = '/content/gdrive/MyDrive/Colab Notebooks/data/MLP_trainedResults/'
+modelFilePath = base_path+'data/MLP_trainedModels/'
+resultFilePath = base_path+'data/MLP_trainedResults/'
 
 #============================== End of Setting ================================
 

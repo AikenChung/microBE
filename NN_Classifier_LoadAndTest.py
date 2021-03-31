@@ -11,13 +11,19 @@ import phylaMLP
 
 
 #================================== Setting ==================================
-if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data/MLP_testResults'):
-    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data/MLP_testResults')
+base_path = './'
+usingGoogleCloud = True
+
+if usingGoogleCloud :
+    base_path = '/content/gdrive/My Drive/Colab Notebooks/'
+
+if not os.path.exists(base_path+'data/MLP_testResults'):
+    os.makedirs(base_path+'data/MLP_testResults')
     
-resultFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_testResults/'    
+resultFilePath = base_path+'data/MLP_testResults/'    
 
 # Load the saved MLP model
-modelFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels/'
+modelFilePath = base_path+'data/MLP_trainedModels/'
 modelFileName = 'MLP_1177_128_32_1_Adam_lr_0.001_MSELoss_bSize32_epoch5000_phyla_stool_noNC_no_BE.pt'
 
 # Define the parameters according to the loaded model
@@ -31,7 +37,7 @@ args = easydict.EasyDict({
 })
 
 # Define the file to test
-testing_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.csv'
+testing_file = base_path+'phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.csv'
 test_data_prefix = 'phyla_stool_noNC'
 test_data_surfix_BE_method = 'no_BE'
 
