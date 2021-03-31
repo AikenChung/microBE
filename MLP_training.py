@@ -15,19 +15,19 @@ import easydict
 import phylaMLP
 
 #================================== Setting ==================================
-train_base_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
+train_base_file = './phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
 train_data_prefix = 'phyla_stool_noNC'
 train_data_surfix_BE_method = 'no_BE'
 
 args = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
-        "epochs": 5000,             # Number of iterations to train Model for
+        "epochs": 2000,             # Number of iterations to train Model for
         "hidden_dim": 128,          # Size of each hidden layer in Discriminator
         "pre_output_layer_dim": 32, # Size of each hidden layer in Discriminator
         "output_dim": 1,            # Size of output layer
         "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator (ie. 'mlp':  w/o 1st & last; 'resnet's: num. resudual blocks)
         "batch_size": 32,           # Batch size
-        "learning_rate": 0.0005,     # Learning rate for the optimizer
+        "learning_rate": 0.001,     # Learning rate for the optimizer
         "beta1": 0.5,               # 'beta1' for the optimizer
         "adapt_lr_iters": 5,        # how often decrease the learning rate
 })
@@ -42,17 +42,17 @@ fileNameToSave_base = ('MLP_'+ str(args.feature_Num) +'_'+
                                str(args.epochs) + '_'+train_data_prefix+'_'+
                                train_data_surfix_BE_method)
 
-if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data'):
-    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data')
+if not os.path.exists('./data'):
+    os.makedirs('./data')
 
-if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels'):
-    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels')
+if not os.path.exists('./data/MLP_trainedModels'):
+    os.makedirs('./data/MLP_trainedModels')
 
-if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedResults'):
-    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedResults')
+if not os.path.exists('./data/MLP_trainedResults'):
+    os.makedirs('./data/MLP_trainedResults')
     
-modelFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels/'
-resultFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedResults/'
+modelFilePath = './data/MLP_trainedModels/'
+resultFilePath = './data/MLP_trainedResults/'
 
 #============================== End of Setting ================================
 
@@ -232,6 +232,9 @@ def compute_accuracy(loader, net):
                 if sample_val == 1:
                     if predict_val>0.5:
                         TP = TP + 1
+                    else:
+                        FN = FN + 1
+                elif sample_val == 0:
                     if predict_val <= 0.5:
                         TN = TN + 1
                     else:

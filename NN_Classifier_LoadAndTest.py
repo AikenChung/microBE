@@ -118,6 +118,9 @@ def compute_accuracy(loader, net):
                 if sample_val == 1:
                     if predict_val>0.5:
                         TP = TP + 1
+                    else:
+                        FN = FN + 1
+                elif sample_val == 0:
                     if predict_val <= 0.5:
                         TN = TN + 1
                     else:
