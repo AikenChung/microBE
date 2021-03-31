@@ -55,11 +55,11 @@ train_BE_file = base_path+'phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.cs
 args_vae = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
         "epochs": 500,              # Number of iterations to train Model for
-        "hidden_dim": 512,          # Size of each hidden layer in Discriminator
-        "latent_dim": 64,           # Size of each hidden layer in Discriminator
-        "vae_hidden_layer_num": 2,  # How many (middle or hidden) layers in Discriminator (ie. 'mlp':  w/o 1st & last; 'resnet's: num. resudual blocks)
+        "hidden_dim": 256,          # Size of each hidden layer in Discriminator
+        "latent_dim": 32,           # Size of each hidden layer in Discriminator
+        "vae_hidden_layer_num": 1,  # How many (middle or hidden) layers in Discriminator
         "batch_size": 32,           # Batch size
-        "learning_rate": 0.0001,     # Learning rate for the optimizer
+        "learning_rate": 0.00001,   # Learning rate for the optimizer
         "vae_type": 'BCELogits',    # 'MSE' for Gaussian VAE, 'nbELBO' for Negative Binomial VAE
         "beta1": 0.5,               # 'beta1' for the optimizer
         "adapt_lr_iters": 10,       # how often decrease the learning rate
@@ -72,7 +72,7 @@ args_mlp = easydict.EasyDict({
         "hidden_dim": 128,          # Size of each hidden layer in Discriminator
         "pre_output_layer_dim": 32, # Size of each hidden layer in Discriminator
         "output_dim": 1,            # Size of output layer
-        "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator (ie. 'mlp':  w/o 1st & last; 'resnet's: num. resudual blocks)
+        "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator
         "batch_size": 32,           # Batch size
         "learning_rate": 0.0001,    # Learning rate for the optimizer
         "beta1": 0.5,               # 'beta1' for the optimizer
@@ -424,7 +424,8 @@ def vae_nb_Loss(x_reconst, mu, log_var, x_ori):
     return loss
 
 
-"""#### Gradient Penalty Function (or some other helpful functions)
+"""
+#### Gradient Penalty Function (or some other helpful functions)
 Ref: Ahmad's source code for training GAN
 """
 def disc_grad_penalty(disc, real_samples, penalty_amount=10, retain=True):
@@ -612,12 +613,15 @@ scheduler_mlp= torch.optim.lr_scheduler.ExponentialLR(optimizer_mlp, gamma=0.99)
 scheduler_vae= torch.optim.lr_scheduler.ExponentialLR(optimizer_vae, gamma=0.99)
 
 """
-Start to run the VAE model
+Start to run and train the VAE model
 """
 
-training_history = vae_training(discriminatorMLP, varAutoEncoder, args_vae.epochs, train_loader, validation_loader, 
-                                   optimizer_mlp, optimizer_vae, scheduler_mlp, scheduler_vae, 
-                                   criterion, device=device, fileNameForModel=modelFilePath+fileNameToSave_base_vae)
+training_history = vae_training(discriminatorMLP, varAutoEncoder, 
+                                args_vae.epochs, train_loader, validation_loader, 
+                                optimizer_mlp, optimizer_vae, 
+                                scheduler_mlp, scheduler_vae, 
+                                criterion, device=device, 
+                                fileNameForModel=modelFilePath+fileNameToSave_base_vae)
 
 plt.figure()
 ax = sns.lineplot(x="epochs", y="loss", hue= "set", data=training_history)
@@ -647,7 +651,7 @@ test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base_vae + "_te
 write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
              fileNameToSave_base_vae, modelFileName_loaded_mlp, 
              testing_file, 'Ref. file results:')
-
+print('Reference testing file:')
 print(testing_file)
 print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
 print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
