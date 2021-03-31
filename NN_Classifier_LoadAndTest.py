@@ -32,7 +32,7 @@ args = easydict.EasyDict({
 
 # Define the file to test
 testing_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.csv'
-test_data_prefix = 'phyla_biopsy_noCS'
+test_data_prefix = 'phyla_stool_noNC'
 test_data_surfix_BE_method = 'no_BE'
 
 fileNameToSave_base = (modelFileName[0:len(modelFileName)-3]+
