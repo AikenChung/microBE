@@ -90,7 +90,7 @@ testing_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_467x11
 
 # Load the saved MLP model
 #modelFilePath_loaded_mlp = './data/MLP_trainedModels/'
-modelFileName_loaded_mlp = '/content/gdrive/My Drive/Colab Notebooks/MLP_1177_128_32_1_Adam_lr_0.001_MSELoss_bSize32_epoch5000_phyla_stool_noNC_no_BE.pt'
+modelFileName_loaded_mlp = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels/MLP_1177_128_32_1_Adam_lr_0.001_MSELoss_bSize32_epoch5000_phyla_stool_noNC_no_BE.pt'
 
 args_loaded_mlp = easydict.EasyDict({
         "feature_Num": 1177,          # Number of features (columns) in the input data
