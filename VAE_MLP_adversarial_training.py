@@ -21,30 +21,36 @@ import matplotlib.pyplot as plt
 import easydict
 from torch.autograd import Variable
 
-import os as os
-if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data'):
-    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data')
-
-if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data'):
-    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data')
-
-if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data/VAE_trainedModels'):
-    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data/VAE_trainedModels')
-
-if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data/VAE_trainedResults'):
-    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data/VAE_trainedResults')
-
-
-if not os.path.exists('./data/VAE_testResults'):
-    os.makedirs('./data/VAE_testResults')
-    
-vae_testResultFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/VAE_testResults/'    
-modelFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/VAE_trainedModels/'
-resultFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/VAE_trainedResults/'
-
 #================================== Setting ==================================
-train_raw_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
-train_BE_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
+base_path = './'
+usingGoogleCloud = True
+
+if usingGoogleCloud :
+    base_path = '/content/gdrive/My Drive/Colab Notebooks/'
+
+import os as os
+if not os.path.exists(base_path+'data'):
+    os.makedirs(base_path+'data')
+
+if not os.path.exists(base_path+'data'):
+    os.makedirs(base_path+'data')
+
+if not os.path.exists(base_path+'data/VAE_trainedModels'):
+    os.makedirs(base_path+'data/VAE_trainedModels')
+
+if not os.path.exists(base_path+'data/VAE_trainedResults'):
+    os.makedirs(base_path+'data/VAE_trainedResults')
+
+
+if not os.path.exists(base_path+'data/VAE_testResults'):
+    os.makedirs(base_path+'data/VAE_testResults')
+    
+vae_testResultFilePath = base_path+'data/VAE_testResults/'    
+modelFilePath = base_path+'data/VAE_trainedModels/'
+resultFilePath = base_path+'data/VAE_trainedResults/'
+
+train_raw_file = base_path+'phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
+train_BE_file = base_path+'phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
 
 args_vae = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
@@ -53,10 +59,11 @@ args_vae = easydict.EasyDict({
         "latent_dim": 64,           # Size of each hidden layer in Discriminator
         "vae_hidden_layer_num": 2,  # How many (middle or hidden) layers in Discriminator (ie. 'mlp':  w/o 1st & last; 'resnet's: num. resudual blocks)
         "batch_size": 32,           # Batch size
-        "learning_rate": 0.001,     # Learning rate for the optimizer
-        "vae_type": 'BCELogits',          # 'MSE' for Gaussian VAE, 'nbELBO' for Negative Binomial VAE
-        "adapt_lr_iters": 10,        # how often decrease the learning rate
-        "lmbda": 10,                  # 'lmbda' for Lipschitz gradient penalty hyperparameter
+        "learning_rate": 0.0001,     # Learning rate for the optimizer
+        "vae_type": 'BCELogits',    # 'MSE' for Gaussian VAE, 'nbELBO' for Negative Binomial VAE
+        "beta1": 0.5,               # 'beta1' for the optimizer
+        "adapt_lr_iters": 10,       # how often decrease the learning rate
+        "lmbda": 10,                # 'lmbda' for Lipschitz gradient penalty hyperparameter
 })
 
 args_mlp = easydict.EasyDict({
@@ -67,9 +74,9 @@ args_mlp = easydict.EasyDict({
         "output_dim": 1,            # Size of output layer
         "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator (ie. 'mlp':  w/o 1st & last; 'resnet's: num. resudual blocks)
         "batch_size": 32,           # Batch size
-        "learning_rate": 0.0003,     # Learning rate for the optimizer
+        "learning_rate": 0.0001,    # Learning rate for the optimizer
         "beta1": 0.5,               # 'beta1' for the optimizer
-        "adapt_lr_iters": 10,        # how often decrease the learning rate
+        "adapt_lr_iters": 10,       # how often decrease the learning rate
 })
 
 input_data_prefix = 'phyla_stool_noNC'
@@ -85,12 +92,12 @@ fileNameToSave_base_vae = ('VAE_'+ str(args_vae.feature_Num) +'_'+
                                str(args_vae.batch_size) + '_epoch'+
                                str(args_vae.epochs) + '_phyla_stool_noNC_no_BE')
 
-#####################################  MLP ####################################
-testing_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.csv'
+######################## Setting for the Loaded MLP ############################
+testing_file = base_path+'phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.csv'
+#testing_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.csv'
 
 # Load the saved MLP model
-#modelFilePath_loaded_mlp = './data/MLP_trainedModels/'
-modelFileName_loaded_mlp = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels/MLP_1177_128_32_1_Adam_lr_0.001_MSELoss_bSize32_epoch5000_phyla_stool_noNC_no_BE.pt'
+modelFileName_loaded_mlp = base_path+'data/MLP_trainedModels/MLP_1177_128_32_1_Adam_lr_0.001_MSELoss_bSize32_epoch5000_phyla_stool_noNC_no_BE.pt'
 
 args_loaded_mlp = easydict.EasyDict({
         "feature_Num": 1177,          # Number of features (columns) in the input data
@@ -100,6 +107,10 @@ args_loaded_mlp = easydict.EasyDict({
         "output_dim": 1,              # Size of the output layer
         "batch_size": 32,             # Batch size
 })
+
+
+#============================== End of Setting ================================
+
 
 norm_data_df = pd.read_csv(testing_file, low_memory=False, lineterminator='\n')
 the_first_colum_df = norm_data_df.iloc[:, 0:1].copy()
@@ -142,15 +153,12 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-#============================== End of Setting ================================
-
-
 class Phyla_VAE_Dataset(Dataset):
     """ Phyla dataset"""
     """
     Dataset for binary classification IBD/Healthy
     """
-    # Initialize your data, download, etc.
+    # Initialize dataset for VAE.
     def __init__(self, inputFile, inputFile_BE):
         ori_data = pd.read_csv(inputFile, low_memory=False, lineterminator='\n')
         phyla_input = ori_data[ori_data.columns[1:args_vae.feature_Num+1]]
@@ -183,7 +191,7 @@ class Phyla_MLP_Dataset(Dataset):
     """
     Dataset for binary classification IBD/Healthy
     """
-    # Initialize your data, download, etc.
+    # Initialize dataset for MLP model.
     def __init__(self, inputFile):
         ori_data = pd.read_csv(inputFile)
         phyla_input = ori_data[ori_data.columns[1:args_mlp.feature_Num+1]]
@@ -210,7 +218,6 @@ class Phyla_MLP_Dataset(Dataset):
     def __len__(self):
         return self.len
 
-dataset = Phyla_VAE_Dataset(train_raw_file, train_BE_file)
  
 """
 We now need to split our dataset into two parts.
@@ -222,20 +229,6 @@ Here we choose to keep 80\% of the samples for training and 20\% for validating.
 
 # starting time
 start = time.time()
-
-train_set_size = int(len(dataset) * 0.8)
-validation_set_size = len(dataset) - train_set_size
-
-"""Split randomly our dataset into two parts"""
-
-train_dataset, validation_dataset = torch.utils.data.random_split(dataset, 
-                                                            lengths=[train_set_size, validation_set_size], 
-                                                            generator=torch.Generator().manual_seed(0))
-
-"""We initialize dataloader objects. These dataloaders will provide data one batch at a time, which is convenient to train our machine learning model."""
-
-train_loader = DataLoader(train_dataset, batch_size=args_vae.batch_size, shuffle=True)
-validation_loader = DataLoader(validation_dataset, batch_size=args_vae.batch_size, shuffle=True)
 
 
 # VAE model
@@ -301,23 +294,30 @@ def vae_train_pass(model_D, model_G, data_loader, optimizer_D, optimizer_G, crit
         # (1) Update model_ D network: maximize log(D(x)) + log(1 - D(G(z))) + GP(disc_grad_penalty) wanting D(x)=1 & D(G(z))=0
         # Ref: Ahmad's source code for training GAN
         ############################
+        # zero the parameter gradients of discrimnator network
+        optimizer_D.zero_grad()
+        # original input data
         count_data_raw = count_data_raw.float().to(device)
+        # target data that VAE needs to learn
         count_data_BE = count_data_BE.float().to(device)
+        # Generating the false count data
         fake_count, mu, log_var = model_G(count_data_raw)
-        
+        # Feed the real count data (the target data which VAE need to learn) into discriminator model
         disc_real = model_D(count_data_BE).view(-1)
         lossD_real = criterion(disc_real, torch.ones_like(disc_real))
+        lossD_real.backward(retain_graph=False)
+        # Feed the real count data into discriminator model
         disc_fake = model_D(fake_count).view(-1)
         lossD_fake = criterion(disc_fake, torch.zeros_like(disc_fake))
-        # regularization_penalty term: GP(disc_grad_penalty) wanting D(x)=1 & D(G(z))=0
-        #regularization_penalty = disc_grad_penalty(model_D, count_data_BE, penalty_amount=args_vae.lmbda)
-        # cost function that discriminator network tries to minimize by maximizing the eq:
-        # log(D(x)) + log(1 - D(G(z))) + GP(disc_grad_penalty) wanting D(x)=1 & D(G(z))=0
-        #lossD = lossD_real + lossD_fake + regularization_penalty
-        lossD = (lossD_real + lossD_fake) / 2
-        model_D.zero_grad()
+        lossD_fake.backward(retain_graph=False)
+        ### cost function that discriminator network tries to minimize by maximizing the eq:
+        ### log(D(x)) + log(1 - D(G(z))) + GP(disc_grad_penalty) wanting D(x)=1 & D(G(z))=0
+        ### regularization_penalty term: GP(disc_grad_penalty) wanting D(x)=1 & D(G(z))=0
+        regularization_penalty = disc_grad_penalty(model_D, count_data_BE, penalty_amount=args_vae.lmbda)        
+        lossD = lossD_real + lossD_fake + regularization_penalty
+        #lossD = (lossD_real + lossD_fake)/2
         lossD.to(device)
-        lossD.backward(retain_graph=True)
+        #lossD.backward(retain_graph=True)
         optimizer_D.step()
         pass_lossD += lossD.item()
         
@@ -325,14 +325,15 @@ def vae_train_pass(model_D, model_G, data_loader, optimizer_D, optimizer_G, crit
         # (2) Update model_G network: maximize log(model_D(G(z))) wanting model_D(G(z))=1
         # Ref: Ahmad's source code for training GAN
         ############################
-        outputD_fake = model_D(fake_count).view(-1)
+        # zero the parameter gradients of generative network
+        optimizer_G.zero_grad()
+        # New fake_samples for the purpose of training generator
+        fake_count, mu, log_var = model_G(count_data_raw)
         # Try to produce the output that mimics the input and fools the model_D at this step
+        outputD_fake = model_D(fake_count).view(-1)
         lossG = criterion(outputD_fake, torch.ones_like(outputD_fake))
-        model_G.zero_grad()
-        lossG.backward()
         optimizer_G.step()
         pass_lossG += lossG.item()
-        
     return pass_lossD/len(data_loader), pass_lossG/len(data_loader)
 
 def vae_validate_pass(model_D, model_G, data_loader, criterion, device):
@@ -465,7 +466,6 @@ def disc_grad_penalty(disc, real_samples, penalty_amount=10, retain=True):
     return gp_loss
 
 
-
 """
 Define the evaluation metric
 We will use several evaluation metrics.
@@ -561,6 +561,30 @@ def write_result(fileName, dataObj, vae_modelName, mlp_modelName, testingFileNam
             f.write(strToWrite)
 
 
+"""
+VAE-MLP Adversarial Training Process
+"""
+# Initialize dataset for VAE
+dataset = Phyla_VAE_Dataset(train_raw_file, train_BE_file)
+
+train_set_size = int(len(dataset) * 0.8)
+validation_set_size = len(dataset) - train_set_size
+
+"""Split randomly our dataset into two parts"""
+train_dataset, validation_dataset = torch.utils.data.random_split(dataset, 
+                                                            lengths=[train_set_size, validation_set_size], 
+                                                            generator=torch.Generator().manual_seed(0))
+
+"""
+We initialize dataloader objects. 
+These dataloaders will provide data one batch at a time, 
+which is convenient to train our machine learning model.
+"""
+train_loader = DataLoader(train_dataset, batch_size=args_vae.batch_size, shuffle=True)
+validation_loader = DataLoader(validation_dataset, batch_size=args_vae.batch_size, shuffle=True)
+
+
+
 #criterion = nn.BCELoss()
 criterion = nn.BCEWithLogitsLoss()
 
@@ -580,8 +604,9 @@ varAutoEncoder.to(device)
 discriminatorMLP.to(device)
 
 # setup optimizer
-optimizer_vae = torch.optim.Adam(varAutoEncoder.parameters(), lr=args_vae.learning_rate)
 optimizer_mlp = torch.optim.Adam(list(discriminatorMLP.parameters()), lr=args_mlp.learning_rate, betas=(args_mlp.beta1, 0.999))
+optimizer_vae = torch.optim.Adam(list(varAutoEncoder.parameters()), lr=args_vae.learning_rate, betas=(args_vae.beta1, 0.999))
+
 # use an exponentially decaying learning rate
 scheduler_mlp= torch.optim.lr_scheduler.ExponentialLR(optimizer_mlp, gamma=0.99)
 scheduler_vae= torch.optim.lr_scheduler.ExponentialLR(optimizer_vae, gamma=0.99)
