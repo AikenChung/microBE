@@ -2,7 +2,6 @@
 
 import seaborn as sns; sns.set()
 import matplotlib.pyplot as plt
-
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch import nn, from_numpy, optim
@@ -16,9 +15,9 @@ import easydict
 import phylaMLP
 
 #================================== Setting ==================================
-train_base_file = './phyla_biopsy_noCS_1252x1177_PMI_threshold_0_clr_plsda_85p.csv'
-train_data_prefix = 'phyla_biopsy_noCS'
-train_data_surfix_BE_method = 'plsda_BE'
+train_base_file = '/content/gdrive/My Drive/Colab Notebooks/phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
+train_data_prefix = 'phyla_stool_noNC'
+train_data_surfix_BE_method = 'no_BE'
 
 args = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
@@ -43,17 +42,17 @@ fileNameToSave_base = ('MLP_'+ str(args.feature_Num) +'_'+
                                str(args.epochs) + '_'+train_data_prefix+'_'+
                                train_data_surfix_BE_method)
 
-if not os.path.exists('./data'):
-    os.makedirs('./data')
+if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data'):
+    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data')
 
-if not os.path.exists('./data/MLP_trainedModels'):
-    os.makedirs('./data/MLP_trainedModels')
+if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels'):
+    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels')
 
-if not os.path.exists('./data/MLP_trainedResults'):
-    os.makedirs('./data/MLP_trainedResults')
+if not os.path.exists('/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedResults'):
+    os.makedirs('/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedResults')
     
-modelFilePath = './data/MLP_trainedModels/'
-resultFilePath = './data/MLP_trainedResults/'
+modelFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedModels/'
+resultFilePath = '/content/gdrive/My Drive/Colab Notebooks/data/MLP_trainedResults/'
 
 #============================== End of Setting ================================
 
@@ -332,6 +331,5 @@ ax = sns.lineplot(x="epochs", y="loss", hue= "set", data=training_history)
 fig_trainHistory = ax.get_figure()
 training_history_plotName = resultFilePath + fileNameToSave_base +'_training_history.png'
 fig_trainHistory.savefig(training_history_plotName)
-
 
 
