@@ -16,7 +16,7 @@ import phylaMLP
 
 #================================== Setting ==================================
 base_path = './'
-usingGoogleCloud = True
+usingGoogleCloud = True # if using the local machine, please set 'usingGoogleCloud' to False
 
 if usingGoogleCloud :
     base_path = '/content/gdrive/My Drive/Colab Notebooks/'
@@ -31,7 +31,7 @@ args = easydict.EasyDict({
         "hidden_dim": 128,          # Size of each hidden layer in Discriminator
         "pre_output_layer_dim": 32, # Size of each hidden layer in Discriminator
         "output_dim": 1,            # Size of output layer
-        "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator (ie. 'mlp':  w/o 1st & last; 'resnet's: num. resudual blocks)
+        "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator
         "batch_size": 32,           # Batch size
         "learning_rate": 0.001,     # Learning rate for the optimizer
         "beta1": 0.5,               # 'beta1' for the optimizer

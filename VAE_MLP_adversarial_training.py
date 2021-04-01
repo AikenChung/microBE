@@ -204,15 +204,6 @@ class Phyla_MLP_Dataset(Dataset):
     def __len__(self):
         return self.len
 
- 
-"""
-We now need to split our dataset into two parts.
-The **train set** will be used to train our model, 
-and the **validation set** will be used for evaluation.
-First, let us compute the number of samples to put in each split. 
-Here we choose to keep 80\% of the samples for training and 20\% for validating.
-"""
-
 
 # VAE model
 class VarAutoEncoder(torch.nn.Module):
@@ -545,8 +536,12 @@ def write_result(fileName, dataObj, vae_modelName, mlp_modelName, testingFileNam
 # starting time
 start = time.time()
 
+# sets device for model and PyTorch tensors
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # Load the file of the trained model
-loadedModel_mlp = torch.load(modelFileName_loaded_mlp)
+loadedModel_mlp = torch.load(modelFileName_loaded_mlp, map_location=device)
 # Initiate a model object with the same architecture of the loaded model 
 Model_mlp = MLP(args_loaded_mlp.feature_Num, args_loaded_mlp.hidden_dim, 
                          args_loaded_mlp.mlp_hidden_layers_num, 
@@ -554,9 +549,6 @@ Model_mlp = MLP(args_loaded_mlp.feature_Num, args_loaded_mlp.hidden_dim,
 # Put the loaded model into the initiated model object
 Model_mlp.load_state_dict(loadedModel_mlp[ 'model' ])
 
-# sets device for model and PyTorch tensors
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
 VAE-MLP Adversarial Training Process
@@ -564,6 +556,13 @@ VAE-MLP Adversarial Training Process
 # Initialize dataset for VAE
 dataset = Phyla_VAE_Dataset(train_raw_file, train_BE_file)
 
+"""
+Split the dataset into two parts.
+The **train set** will be used to train our model, 
+and the **validation set** will be used for evaluation.
+First, let us compute the number of samples to put in each split. 
+Here we choose to keep 80\% of the samples for training and 20\% for validating.
+"""
 train_set_size = int(len(dataset) * 0.8)
 validation_set_size = len(dataset) - train_set_size
 

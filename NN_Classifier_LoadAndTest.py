@@ -12,7 +12,7 @@ import phylaMLP
 
 #================================== Setting ==================================
 base_path = './'
-usingGoogleCloud = True
+usingGoogleCloud = True # if using the local machine, please set 'usingGoogleCloud' to False
 
 if usingGoogleCloud :
     base_path = '/content/gdrive/My Drive/Colab Notebooks/'
