@@ -23,7 +23,7 @@ from torch.autograd import Variable
 
 #================================== Setting ==================================
 base_path = './'
-usingGoogleCloud = True
+usingGoogleCloud = True  # if using the local machine, please set 'usingGoogleCloud' to False 
 
 if usingGoogleCloud :
     base_path = '/content/gdrive/My Drive/Colab Notebooks/'
@@ -51,12 +51,12 @@ resultFilePath = base_path+'data/VAE_trainedResults/'
 
 train_raw_file = base_path+'phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
 train_BE_file = base_path+'phyla_stool_noNC_2798x1177_PMI_threshold_0_clr_85p.csv'
-
+# Config for VAE as the generator
 args_vae = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
         "epochs": 500,              # Number of iterations to train Model for
         "hidden_dim": 256,          # Size of each hidden layer in Discriminator
-        "latent_dim": 32,           # Size of each hidden layer in Discriminator
+        "latent_dim": 64,           # Size of each hidden layer in Discriminator
         "vae_hidden_layer_num": 1,  # How many (middle or hidden) layers in Discriminator
         "batch_size": 32,           # Batch size
         "learning_rate": 0.00001,   # Learning rate for the optimizer
@@ -65,7 +65,7 @@ args_vae = easydict.EasyDict({
         "adapt_lr_iters": 10,       # how often decrease the learning rate
         "lmbda": 10,                # 'lmbda' for Lipschitz gradient penalty hyperparameter
 })
-
+# Config for MLP as the discriminator
 args_mlp = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
         "epochs": 5000,             # Number of iterations to train Model for
@@ -98,7 +98,7 @@ testing_file = base_path+'phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.csv'
 
 # Load the saved MLP model
 modelFileName_loaded_mlp = base_path+'data/MLP_trainedModels/MLP_1177_128_32_1_Adam_lr_0.001_MSELoss_bSize32_epoch5000_phyla_stool_noNC_no_BE.pt'
-
+# Config for the pretrained MLP model and must be the same as the loaded model
 args_loaded_mlp = easydict.EasyDict({
         "feature_Num": 1177,          # Number of features (columns) in the input data
         "hidden_dim": 128,            # Size of each hidden layer in the NN modelReference file testing result
@@ -299,8 +299,6 @@ def vae_train_pass(model_D, model_G, data_loader, optimizer_D, optimizer_G, crit
         regularization_penalty = disc_grad_penalty(model_D, count_data_BE, penalty_amount=args_vae.lmbda)        
         lossD = lossD_real + lossD_fake + regularization_penalty
         #lossD = (lossD_real + lossD_fake)/2
-        lossD.to(device)
-        #lossD.backward(retain_graph=True)
         optimizer_D.step()
         pass_lossD += lossD.item()
         
@@ -629,7 +627,7 @@ fig_trainHistory.savefig(training_history_plotName)
 end = time.time()
 totalSeconds = round(end - start)
 
-print(f"Runtime of the program is {totalSeconds} seconds")
+print(f'Runtime of the program is {totalSeconds} seconds')
 
 """
 Run the testing procedure.
