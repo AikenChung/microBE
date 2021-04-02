@@ -59,23 +59,23 @@ args_vae = easydict.EasyDict({
         "latent_dim": 64,           # Size of each hidden layer in Discriminator
         "vae_hidden_layer_num": 1,  # How many (middle or hidden) layers in Discriminator
         "batch_size": 32,           # Batch size
-        "learning_rate": 0.00001,   # Learning rate for the optimizer
+        "learning_rate": 0.000001,   # Learning rate for the optimizer
         "vae_type": 'BCELogits',    # 'MSE' for Gaussian VAE, 'nbELBO' for Negative Binomial VAE
-        "beta1": 0.5,               # 'beta1' for the optimizer
+        "beta1": 0.9,               # 'beta1' for the optimizer
         "adapt_lr_iters": 10,       # how often decrease the learning rate
-        "lmbda": 10,                # 'lmbda' for Lipschitz gradient penalty hyperparameter
+        "lmbda": 30,                # 'lmbda' for Lipschitz gradient penalty hyperparameter
 })
 # Config for MLP as the discriminator
 args_mlp = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
-        "epochs": 5000,             # Number of iterations to train Model for
+        "epochs": 500,             # Number of iterations to train Model for
         "hidden_dim": 128,          # Size of each hidden layer in Discriminator
         "pre_output_layer_dim": 32, # Size of each hidden layer in Discriminator
         "output_dim": 1,            # Size of output layer
         "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator
         "batch_size": 32,           # Batch size
-        "learning_rate": 0.0001,    # Learning rate for the optimizer
-        "beta1": 0.5,               # 'beta1' for the optimizer
+        "learning_rate": 0.000001,    # Learning rate for the optimizer
+        "beta1": 0.9,               # 'beta1' for the optimizer
         "adapt_lr_iters": 10,       # how often decrease the learning rate
 })
 
@@ -87,7 +87,7 @@ fileNameToSave_base_vae = ('VAE_'+ str(args_vae.feature_Num) +'_'+
                                str(args_vae.latent_dim) + '_' +
                                str(args_vae.hidden_dim) + 'x' + 
                                str(args_vae.vae_hidden_layer_num) + '_Adam_lr_' +
-                               str(args_vae.learning_rate) + '_'+
+                               str(args_vae.learning_rate) + '_' +
                                str(args_vae.vae_type) + 'Loss_bSize'+
                                str(args_vae.batch_size) + '_epoch'+
                                str(args_vae.epochs) + '_phyla_stool_noNC_no_BE')
@@ -279,16 +279,17 @@ def vae_train_pass(model_D, model_G, data_loader, optimizer_D, optimizer_G, crit
         # Feed the real count data (the target data which VAE need to learn) into discriminator model
         disc_real = model_D(count_data_BE).view(-1)
         lossD_real = criterion(disc_real, torch.ones_like(disc_real))
-        lossD_real.backward(retain_graph=False)
+        #lossD_real.backward(retain_graph=False)
         # Feed the real count data into discriminator model
         disc_fake = model_D(fake_count).view(-1)
         lossD_fake = criterion(disc_fake, torch.zeros_like(disc_fake))
-        lossD_fake.backward(retain_graph=False)
+        #lossD_fake.backward(retain_graph=False)
         ### cost function that discriminator network tries to minimize by maximizing the eq:
         ### log(D(x)) + log(1 - D(G(z))) + GP(disc_grad_penalty) wanting D(x)=1 & D(G(z))=0
         ### regularization_penalty term: GP(disc_grad_penalty) wanting D(x)=1 & D(G(z))=0
         regularization_penalty = disc_grad_penalty(model_D, count_data_BE, penalty_amount=args_vae.lmbda)        
         lossD = lossD_real + lossD_fake + regularization_penalty
+        lossD.backward(retain_graph=False)
         #lossD = (lossD_real + lossD_fake)/2
         optimizer_D.step()
         pass_lossD += lossD.item()
@@ -581,7 +582,8 @@ validation_loader = DataLoader(validation_dataset, batch_size=args_vae.batch_siz
 
 
 #criterion = nn.BCELoss()
-criterion = nn.BCEWithLogitsLoss()
+#criterion = nn.BCEWithLogitsLoss()
+criterion = nn.MSELoss(reduction='sum')
 
 # Initialization of the VAE obj
 varAutoEncoder = VarAutoEncoder(input_size=args_vae.feature_Num, 
