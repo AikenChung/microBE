@@ -19,7 +19,6 @@ class MLP(nn.Module):
         self.layers.append(nn.Linear(pre_output_dim, output_dim))
     def forward(self, x):
         for layer in self.layers[:-1]:
-            x = torch.tanh(layer(x))
-        out = self.layers[-1](x)
-        out = torch.sigmoid(out)
+            x = torch.relu(layer(x))
+        out = torch.sigmoid(self.layers[-1](x))
         return out
