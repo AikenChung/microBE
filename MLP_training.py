@@ -12,7 +12,6 @@ from tqdm import tqdm
 import time
 import os as os
 import easydict
-#import phylaMLP_MC
 import phylaMLP
 from sklearn.model_selection import KFold
 # import EarlyStopping
@@ -40,7 +39,7 @@ args = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
         "epochs": 5000,             # Number of iterations to train Model for
         "hidden_dim": 128,          # Size of each hidden layer in Discriminator
-        "mlp_hidden_layers_num": 2, # How many (middle or hidden) layers in Discriminator
+        "mlp_hidden_layers_num": 3, # How many (middle or hidden) layers in Discriminator
         "pre_output_layer_dim": 32, # Size of each hidden layer in Discriminator
         "output_dim": 1,            # Size of output layer        
         "batch_size": 32,           # Batch size
@@ -439,6 +438,7 @@ test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_r
 write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
              modelFileName_toSave, fileToTestModel)
 print('')
+print(train_base_file)
 print(fileToTestModel)
 print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
 print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
@@ -460,6 +460,7 @@ test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_r
 write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
              modelFileName_toSave, fileToTestModel)
 print('')
+print(train_base_file)
 print(fileToTestModel)
 print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
 print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
@@ -481,6 +482,7 @@ test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_r
 write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
              modelFileName_toSave, fileToTestModel)
 print('')
+print(train_base_file)
 print(fileToTestModel)
 print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
 print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
