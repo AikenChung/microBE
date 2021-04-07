@@ -38,15 +38,15 @@ testing_file_3 = base_path+'phyla_stool_noNC_467x1177_PMI_threshold_0_clr_15p.cs
 args = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
         "epochs": 5000,             # Number of iterations to train Model for
-        "hidden_dim": 128,          # Size of each hidden layer in Discriminator
-        "mlp_hidden_layers_num": 3, # How many (middle or hidden) layers in Discriminator
-        "pre_output_layer_dim": 32, # Size of each hidden layer in Discriminator
+        "hidden_dim": 256,          # Size of each hidden layer in Discriminator
+        "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator
+        "pre_output_layer_dim": 128, # Size of each hidden layer in Discriminator
         "output_dim": 1,            # Size of output layer        
         "batch_size": 32,           # Batch size
         "learning_rate": 0.0001,    # Learning rate for the optimizer
         "beta1": 0.5,               # 'beta1' for the optimizer
         "adapt_lr_iters": 5,        # how often decrease the learning rate
-        "normalization_method":'Median' # Madian, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
+        "normalization_method":'median' # Madian, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
 })
 
 
@@ -346,7 +346,7 @@ k_folds = 5
 kfold = KFold(n_splits=k_folds, shuffle=True)
 
 # early stopping patience; how long to wait after last time validation loss improved.
-patience = 500
+patience = 50
 
 best_validate_accuracy = 0
 best_fold = 0

@@ -20,5 +20,5 @@ class MLP(nn.Module):
     def forward(self, x):
         for layer in self.layers[:-1]:
             x = torch.relu(layer(x))
-        out = torch.sigmoid(self.layers[-1](x))
+        out = self.layers[-1](x)
         return out
