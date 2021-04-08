@@ -483,6 +483,9 @@ for i in range(k_folds):
     fig_trainHistory.savefig(training_history_plotName)
 
 
+print('')
+print('The best validation accuracy: ' + str(np.round(best_validate_accuracy, decimals=2)) + '% at fold-'+str(best_fold))
+
 """
 Run the testing procedure.
 """
