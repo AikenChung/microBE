@@ -172,8 +172,8 @@ def training(model, loader_S, loader_T, optimizer, criterion, device, epoch, nb_
         err_t_label = criterion(class_predict_t.to(device), t_label.to(device))        
         
         # backward + optimize
-        # loss = err_t_label + err_s_label + err_s_domain + err_t_domain # Include the target_label_loss
-        loss = err_s_label + err_s_domain + err_t_domain
+        loss = err_t_label + err_s_label + err_s_domain + err_t_domain # Include the target_label_loss
+        #loss = err_s_label + err_s_domain + err_t_domain
         loss.to(device)
         loss.backward()
         optimizer.step()  # Update the parameters of the model
