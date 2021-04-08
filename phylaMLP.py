@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import torch
@@ -17,7 +18,11 @@ class MLP(nn.Module):
             self.layers.append(nn.Linear(hidden_dim, hidden_dim))
         self.layers.append(nn.Linear(hidden_dim, pre_output_dim))
         self.layers.append(nn.Linear(pre_output_dim, output_dim))
+        # Define proportion of neurons to dropout
+        self.dropout = nn.Dropout(0.2)
     def forward(self, x):
+        # Apply dropout in the input layer
+        x = self.dropout(x)
         for layer in self.layers[:-1]:
             x = torch.relu(layer(x))
         out = self.layers[-1](x)
