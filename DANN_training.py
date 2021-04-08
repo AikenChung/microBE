@@ -50,7 +50,7 @@ args = easydict.EasyDict({
         "learning_rate": 0.0001,     # Learning rate for the optimizer
         "beta1": 0.5,               # 'beta1' for the optimizer
         "adapt_lr_iters": 10,        # how often decrease the learning rate
-        "normalization_method":'minMax' # Median, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
+        "normalization_method":'Median' # Median, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
 })
 
 fileNameToSave_base = ('DANN_'+ str(args.feature_Num) +'_'+ 
