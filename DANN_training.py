@@ -39,9 +39,11 @@ testing_file_all = base_path+'phyla_all_753x1177_PMI_threshold_0_clr_15p.csv'
 args = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
         "epochs": 3000,              # Number of iterations to train Model for
-        "hidden_dim": 256,          # Size of each hidden layer in DANN
+        "hidden_dim": 512,          # Size of each hidden layer in DANN
         "dann_hidden_layers_num": 1,# How many (middle or hidden) layers in DANN
-        "feature_layer_size": 256,   # Size of feature_layer in the end of feature_extractor
+        "feature_layer_size": 512,   # Size of feature_layer in the end of feature_extractor
+        "hidden_dim_2nd": 256,          # Size of each hidden layer in DANN
+        "dann_2nd_hidden_layers_num": 1,# How many (middle or hidden) layers in DANN
         "pre_output_layer_dim": 128, # Size of pre-output layer in DANN
         "output_dim": 1,            # Size of output layer      
         "batch_size": 32,           # Batch size
@@ -375,6 +377,7 @@ Start to train the DANN model
 # Initilize model, criterion, optimizer. Then train the model
 classifier_DANN = phylaDANN.DANN(args.feature_Num, args.hidden_dim, 
                          args.dann_hidden_layers_num, args.feature_layer_size,
+                         args.hidden_dim_2nd, args.dann_2nd_hidden_layers_num,
                          args.pre_output_layer_dim, args.output_dim)
 
 # Configuration options

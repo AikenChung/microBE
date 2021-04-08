@@ -8,10 +8,12 @@ from utils_DANN import ReverseLayerF
 class DANN(nn.Module):
 
     def __init__(self, input_size=1177, hidden_size=512, hidden_layer_num=1, 
-                 feature_layer_size=32, pre_output_size=32, output_size=1):
+                 feature_layer_size=512, hidden_size_2nd=256, hidden_layer_2nd_num=1,
+                 pre_output_size=32, output_size=1):
         super(DANN, self).__init__()
         self.LogSoftmax = nn.LogSoftmax(dim=1)
         self.hidden_layer_num = hidden_layer_num
+        self.hidden_layer_2nd_num = hidden_layer_2nd_num
         self.feature_extractor_layer = nn.ModuleList()
         self.feature_extractor_layer.append(nn.Linear(input_size, hidden_size))
         for layer in range(hidden_layer_num):
@@ -19,17 +21,17 @@ class DANN(nn.Module):
         self.feature_extractor_layer.append(nn.Linear(hidden_size, feature_layer_size))
         
         self.class_classifier_layer = nn.ModuleList()
-        self.class_classifier_layer.append(nn.Linear(feature_layer_size, hidden_size))
-        for layer in range(hidden_layer_num):
-            self.class_classifier_layer.append(nn.Linear(hidden_size, hidden_size))
-        self.class_classifier_layer.append(nn.Linear(hidden_size, pre_output_size))
+        self.class_classifier_layer.append(nn.Linear(feature_layer_size, hidden_size_2nd))
+        for layer in range(hidden_layer_2nd_num):
+            self.class_classifier_layer.append(nn.Linear(hidden_size_2nd, hidden_size_2nd))
+        self.class_classifier_layer.append(nn.Linear(hidden_size_2nd, pre_output_size))
         self.class_classifier_layer.append(nn.Linear(pre_output_size, output_size))
         
         self.domain_classifier_layer = nn.ModuleList()
-        self.domain_classifier_layer.append(nn.Linear(feature_layer_size, hidden_size))
-        for layer in range(hidden_layer_num):
-            self.domain_classifier_layer.append(nn.Linear(hidden_size, hidden_size))
-        self.domain_classifier_layer.append(nn.Linear(hidden_size, pre_output_size))
+        self.domain_classifier_layer.append(nn.Linear(feature_layer_size, hidden_size_2nd))
+        for layer in range(hidden_layer_2nd_num):
+            self.domain_classifier_layer.append(nn.Linear(hidden_size_2nd, hidden_size_2nd))
+        self.domain_classifier_layer.append(nn.Linear(hidden_size_2nd, pre_output_size))
         self.domain_classifier_layer.append(nn.Linear(pre_output_size, output_size))       
         # Define proportion of neurons to dropout
         self.dropout = nn.Dropout(0.2)
