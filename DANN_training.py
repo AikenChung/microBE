@@ -37,13 +37,13 @@ testing_file_t = base_path+'phyla_biopsy_213x1177_PMI_threshold_0_clr_15p.csv'
 testing_file_all = base_path+'phyla_all_753x1177_PMI_threshold_0_clr_15p.csv'
 
 args = easydict.EasyDict({
-        "feature_Num": 1177,        # Number of features (columns) in the input data
-        "epochs": 3000,              # Number of iterations to train Model for
-        "hidden_dim": 512,          # Size of each hidden layer in DANN
-        "dann_hidden_layers_num": 1,# How many (middle or hidden) layers in DANN
-        "feature_layer_size": 512,   # Size of feature_layer in the end of feature_extractor
-        "hidden_dim_2nd": 256,          # Size of each hidden layer in DANN
-        "dann_2nd_hidden_layers_num": 1,# How many (middle or hidden) layers in DANN
+        "feature_Num": 1177,         # Number of features (columns) in the input data
+        "epochs": 5000,              # Number of iterations to train Model for
+        "hidden_dim": 512,           # Size of each hidden layer in DANN
+        "dann_hidden_layers_num": 1,     # How many (middle or hidden) layers in DANN
+        "feature_layer_size": 512,       # Size of feature_layer in the end of feature_extractor
+        "hidden_dim_2nd": 128,           # Size of each hidden layer in DANN
+        "dann_2nd_hidden_layers_num": 1, # How many (middle or hidden) layers in DANN
         "pre_output_layer_dim": 128, # Size of pre-output layer in DANN
         "output_dim": 1,            # Size of output layer      
         "batch_size": 32,           # Batch size
@@ -194,7 +194,7 @@ def validating(model, data_loader, criterion, device):
         samples = samples.to(device)
         labels = labels.to(device)
         class_output, _ = model(samples, 1)
-        loss = criterion(labels, class_output)
+        loss = criterion(class_output, labels)
         pass_loss += loss.item()
     
     return pass_loss/len(data_loader)
