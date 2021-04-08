@@ -19,7 +19,7 @@ from pytorchtools import EarlyStopping
 
 #================================== Setting ==================================
 base_path = './'
-usingGoogleCloud = False # if using the local machine, please set 'usingGoogleCloud' to False
+usingGoogleCloud = True # if using the local machine, please set 'usingGoogleCloud' to False
 
 if usingGoogleCloud :
     base_path = '/content/gdrive/My Drive/Colab Notebooks/'
@@ -156,20 +156,20 @@ def training(model, loader_S, loader_T, optimizer, criterion, device, epoch, nb_
         class_predict, domain_predict = model(s_data, lambda_=lambda_)
         
         #print('class_predict.view(-1).shape: ', class_predict.view(-1).shape)
-        err_s_label = criterion(class_predict, s_label)
-        err_s_domain = criterion(domain_predict, domain_label)
+        err_s_label = criterion(class_predict.to(device), s_label.to(device))
+        err_s_domain = criterion(domain_predict.to(device), domain_label.to(device))
         
         # train the model using target data
         train_data_T = loader_T.next()
         t_data, t_label = train_data_T
 
         # Define one for source domain data
-        domain_label = torch.ones_like(t_label)
+        domain_label = torch.ones_like(t_label.to(device))
         # Input target data into DANN model
-        class_predict_t, domain_predict = model(t_data, lambda_=lambda_)
-        err_t_domain = criterion(domain_predict, domain_label)
+        class_predict_t, domain_predict = model(t_data.to(device), lambda_=lambda_)
+        err_t_domain = criterion(domain_predict.to(device), domain_label.to(device))
 
-        err_t_label = criterion(class_predict_t, t_label)        
+        err_t_label = criterion(class_predict_t.to(device), t_label.to(device))        
         
         # backward + optimize
         # loss = err_t_label + err_s_label + err_s_domain + err_t_domain # Include the target_label_loss
