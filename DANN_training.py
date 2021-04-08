@@ -50,7 +50,7 @@ args = easydict.EasyDict({
         "learning_rate": 0.0001,     # Learning rate for the optimizer
         "beta1": 0.5,               # 'beta1' for the optimizer
         "adapt_lr_iters": 10,        # how often decrease the learning rate
-        "normalization_method":'Median' # Median, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
+        "normalization_method":'minMax' # Median, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
 })
 
 fileNameToSave_base = ('DANN_'+ str(args.feature_Num) +'_'+ 
@@ -491,8 +491,8 @@ Run the testing procedure.
 """
 # Initiate a dataloader of the testing file
 fileToTestModel = testing_file_s
-test_dataset = PhylaDataset(fileToTestModel, 'Median')
-test_loader = DataLoader(test_dataset, 
+test_dataset_s = PhylaDataset(fileToTestModel, 'Median')
+test_loader = DataLoader(test_dataset_s, 
                          batch_size = args.batch_size, 
                          shuffle=True)
 # Test the loaded model
@@ -513,8 +513,8 @@ print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
 
 # Initiate a dataloader of the testing file
 fileToTestModel = testing_file_t
-test_dataset = PhylaDataset(fileToTestModel, 'Median')
-test_loader = DataLoader(test_dataset, 
+test_dataset_t = PhylaDataset(fileToTestModel, 'Median')
+test_loader = DataLoader(test_dataset_t, 
                          batch_size = args.batch_size, 
                          shuffle=True)
 # Test the loaded model
@@ -548,6 +548,30 @@ write_result(test_dataset_metric_nameToSave, test_dataset_metric,
              modelFileName_toSave, fileToTestModel)
 print('')
 print('Testing mix domain data =>')
+print(fileToTestModel)
+print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
+print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
+print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
+print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
+print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
+
+
+
+
+# Initiate a dataloader of the testing file
+test_dataset_mix = torch.utils.data.ConcatDataset([test_dataset_s, test_dataset_t])
+test_loader = DataLoader(test_dataset_mix, 
+                         batch_size = args.batch_size, 
+                         shuffle=True)
+# Test the loaded model
+test_dataset_metric = compute_accuracy(test_loader, best_model.to(device))
+# Save the testing metrics to a text file
+modelFileName_toSave = fileNameToSave_base + '_fold'+str(best_fold)
+test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
+write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
+             modelFileName_toSave, fileToTestModel)
+print('')
+print('Testing mix of source and target domain data =>')
 print(fileToTestModel)
 print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
 print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
