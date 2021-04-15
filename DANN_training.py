@@ -13,7 +13,7 @@ import time
 import os as os
 import easydict
 import json
-import phylaDANN
+import DANN
 from pytorchtools import EarlyStopping
 
 #================================== Setting ==================================
