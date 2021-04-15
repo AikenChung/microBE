@@ -12,9 +12,9 @@ from tqdm import tqdm
 import time
 import os as os
 import easydict
-import json
 import DANN
 from pytorchtools import EarlyStopping
+from NN_functions import write_result, save_model, compute_accuracy_DANN, test_model_DANN
 
 #================================== Setting ==================================
 base_path = './'
@@ -23,21 +23,26 @@ usingGoogleCloud = False # if using the local machine, please set 'usingGoogleCl
 if usingGoogleCloud :
     base_path = '/content/gdrive/My Drive/Colab Notebooks/'
 
+# Define the input and validate file
 source_data_file = base_path+'phyla_stool_2840x1177_pmi_0_clr_75p_MAD.csv'
-source_data_prefix = 'phyla_stool'
-source_data_surfix_BE_method = 'no_BE'
-
 target_data_file = base_path+'phyla_biopsy_1109x1177_pmi_0_clr_75p_MAD.csv'
-target_data_prefix = 'phyla_biopsy'
-target_data_surfix_BE_method = 'no_BE'
-
 source_validate_file = base_path+'phyla_stool_401x1177_pmi_0_clr_10p_MAD.csv'
 target_validate_file = base_path+'phyla_biopsy_164x1177_pmi_0_clr_10p_MAD.csv'
 
+
+# Specify the filename tag
+source_data_prefix = 'phyla_stool'
+source_data_surfix_BE_method = 'no_BE'
+target_data_prefix = 'phyla_biopsy'
+target_data_surfix_BE_method = 'no_BE'
+
+
+# Define the filenames for tesing. There are 3 testing files specified here.
 testing_file_1 = base_path+'phyla_all_753x1177_pmi_0_clr_15p_MAD.csv'
 testing_file_2 = base_path+'phyla_biopsy_213x1177_pmi_0_clr_15p_MAD.csv'
 testing_file_3 = base_path+'phyla_stool_540x1177_pmi_0_clr_15p_MAD.csv'
 
+# Specifiy the parameters of the DANN model
 args = easydict.EasyDict({
         "feature_Num": 1177,             # Number of features (columns) in the input data
         "epochs": 5000,                  # Number of iterations to train Model for
@@ -53,9 +58,9 @@ args = easydict.EasyDict({
         "learning_rate": 0.0001,         # Learning rate for the optimizer
         "beta1": 0.5,                    # 'beta1' for the optimizer
         "adapt_lr_iters": 10,            # how often decrease the learning rate
-        "normalization_method":'Median'  # Median, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
 })
 
+# Construct the filename for the model
 fileNameToSave_base = ('DANN_'+ str(args.feature_Num) +'_'+ 
                                str(args.hidden_dim) + 'x' + 
                                str(args.dann_hidden_layers_num) + '_' +
@@ -69,7 +74,7 @@ fileNameToSave_base = ('DANN_'+ str(args.feature_Num) +'_'+
                                target_data_prefix + '_' +
                                target_data_surfix_BE_method )
 
-
+# Create folders for results
 if not os.path.exists(base_path+'data'):
     os.makedirs(base_path+'data')
 
@@ -168,6 +173,7 @@ def training(model, loader_S, loader_T, optimizer, criterion, device, epoch, nb_
 
 def validating(model, data_loader, criterion, device):
     model.eval()
+    model.to(device)
     with torch.no_grad():
       pass_loss = 0.0
       for samples, labels in data_loader:
@@ -232,113 +238,8 @@ def run_training_process(model, nb_epochs, dataloader_source,
     return pd.DataFrame(loss_history)
 
 
-def save_model(model_state, fileName):
-    #print("=> Saving model")
-    torch.save(model_state,fileName)
-
-"""### Define the evaluation metric
-
-We will use several evaluation metrics.
-
-Accuracy = (TP+TN) / (TP+TN+FP+FN)
-Specificity = TN / (TN+FP)
-Recall (Sensitivity) = (TP) / (TP+FN)
-Precision = TP / (TP+FP)
-F1-score = (2*Precision*Recall) / (Precision+Recall)
-MCC = (TP*TN - FP*FN) / sqrt((TP+FN)*(TP+FP)*(TN+FN)*(TN+FP))
-"""
-def compute_accuracy(loader, net):
-    accuracy_compute_history = []
-    TP = 0
-    TN = 0
-    FP = 0
-    FN = 0
-    net.eval()
-    with torch.no_grad():      
-        for data in loader:
-            samples, labels = data
-            samples = samples.to(device)
-            outputs, _ = net(samples,1)
-            for i in range(labels.shape[0]):
-                sample_val = labels[i,0]
-                predict_val= outputs[i,0]
-                if sample_val == 1:
-                    if predict_val>0.5:
-                        TP = TP + 1
-                    else:
-                        FN = FN + 1
-                elif sample_val == 0:
-                    if predict_val <= 0.5:
-                        TN = TN + 1
-                    else:
-                        FP = FP + 1
-    recall = 0
-    specificity = 0
-    precision = 0
-    accuracy = 0
-    f1 = 0
-    mcc = 0    
-    if (TP+FN) != 0:
-        recall = TP/(TP+FN) # sensitivity
-    else:
-        recall = 0
-    if (TN+FP) != 0:
-        specificity = TN/(TN+FP)
-    else:
-        specificity = 0
-    if (TP+FP) != 0:
-        precision = TP/(TP+FP)
-    else:
-        precision = 0
-    if (TP+TN+FP+FN) != 0:    
-        accuracy = 100*(TP+TN)/(TP+TN+FP+FN)
-    else:
-        accuracy = 0
-    if (precision+recall) != 0:
-        f1 = (2*precision*recall)/(precision+recall)
-    else:
-        f1 = 0
-    # Matthews correlation coefficient
-    if ((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN) == 0):
-        mcc = 0
-    else:
-        mcc = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)) 
-    
-    accuracy_compute_history.append(
-        {"Accuracy":accuracy,
-         "Precision":precision,
-         "Recall":recall,
-         "F1-score":f1,
-         "MCC":mcc,
-         "Specificity":specificity,
-         "TP": TP, "TN": TN, "FP":FP, "FN": FN
-         }
-    )
-    return accuracy_compute_history
-
-def write_result(fileName, dataObj, modelName, testingFileName):
-    with open(fileName, 'a') as f:
-        theFirstLine = 'Model file: '+modelName+'\n'
-        f.write(theFirstLine)
-        theSecondLine = 'Test file: '+testingFileName+'\n'
-        f.write(theSecondLine)
-        for item in dataObj[0]:
-            strToWrite = "{0}: {1}\n".format(item, np.round(dataObj[0][item], decimals=2))
-            f.write(strToWrite)
-        f.write(json.dumps(args))
-        f.write('\n')
-
-def reset_weights(m):
-  '''
-    Try resetting model weights to avoid
-    weight leakage.
-  '''
-  for layer in m.children():
-   if hasattr(layer, 'reset_parameters'):
-    print(f'Reset trainable parameters of layer = {layer}')
-    layer.reset_parameters()
-
-
+# starting time
+start = time.time()
 
 # sets device for model and PyTorch tensors
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
@@ -350,9 +251,6 @@ train_T_dataset = PhylaDataset(target_data_file)
 
 validate_S_dataset = PhylaDataset(source_validate_file)
 validate_T_dataset = PhylaDataset(target_validate_file)
-
-# starting time
-start = time.time()
 
 """
 Start to train the DANN model
@@ -386,7 +284,10 @@ optimizer_dann = optim.Adam(list(classifier_DANN.parameters()),
 # use an exponentially decaying learning rate
 scheduler_dann= optim.lr_scheduler.ExponentialLR(optimizer_dann, gamma=0.99)
 
+#Specify a filename for saving the model
 modelNameToSave = modelFilePath + fileNameToSave_base
+
+# Start the training procedure
 training_history = run_training_process(classifier_DANN, args.epochs, 
                                         train_S_loader, train_T_loader, 
                                         validate_S_loader, validate_T_loader, 
@@ -394,17 +295,18 @@ training_history = run_training_process(classifier_DANN, args.epochs,
                                         criterion, modelNameToSave,
                                         device=device, patience=patience )
 
+# Compute the training and validating related performance metrics
 train_metric_result_nameToSave = resultFilePath + fileNameToSave_base + "_train_result_metric.txt"
-train_S_metric = compute_accuracy(train_S_loader, classifier_DANN)
-validation_S_metric = compute_accuracy(validate_S_loader, classifier_DANN)
-train_T_metric = compute_accuracy(train_T_loader, classifier_DANN)
-validation_T_metric = compute_accuracy(validate_T_loader, classifier_DANN)
+train_S_metric = compute_accuracy_DANN(train_S_loader, classifier_DANN, device)
+validation_S_metric = compute_accuracy_DANN(validate_S_loader, classifier_DANN, device)
+train_T_metric = compute_accuracy_DANN(train_T_loader, classifier_DANN, device)
+validation_T_metric = compute_accuracy_DANN(validate_T_loader, classifier_DANN, device)
 
-
-write_result(train_metric_result_nameToSave, train_S_metric, fileNameToSave_base, source_data_file)
-write_result(train_metric_result_nameToSave, validation_S_metric, fileNameToSave_base, source_data_file)
-write_result(train_metric_result_nameToSave, train_T_metric, fileNameToSave_base, target_data_file)
-write_result(train_metric_result_nameToSave, validation_T_metric, fileNameToSave_base, target_data_file)
+# Save the training and validating related results
+write_result(train_metric_result_nameToSave, train_S_metric, fileNameToSave_base, source_data_file, args)
+write_result(train_metric_result_nameToSave, validation_S_metric, fileNameToSave_base, source_data_file, args)
+write_result(train_metric_result_nameToSave, train_T_metric, fileNameToSave_base, target_data_file, args)
+write_result(train_metric_result_nameToSave, validation_T_metric, fileNameToSave_base, target_data_file, args)
         
 print('Accuracy of the DANN on the ' + str(len(train_S_dataset)) + ' train samples: %d %%' % train_S_metric[0]["Accuracy"])
 print('Accuracy of the DANN on the ' + str(len(validate_S_dataset)) + ' validation samples: %d %%' % validation_S_metric[0]["Accuracy"])
@@ -412,7 +314,7 @@ print('Accuracy of the DANN on the ' + str(len(train_T_dataset)) + ' target samp
 print('Accuracy of the DANN on the ' + str(len(validate_T_dataset)) + ' target validation samples: %d %%' % validation_T_metric[0]["Accuracy"])
 training_history.head()
 
-
+# Plot the training and validaing loss
 plt.figure()
 ax = sns.lineplot(x="epochs", y="loss", hue= "set", data=training_history)
 fig_trainHistory = ax.get_figure()
@@ -423,83 +325,37 @@ fig_trainHistory.savefig(training_history_plotName)
 """
 Run the testing procedure.
 """
-# Initiate a dataloader of the testing file
-fileToTestModel = testing_file_1
-test_dataset = PhylaDataset(fileToTestModel)
+# Testing for mixed data source (stool+biopsy) file
+input_testing_filename = testing_file_1
+test_result_filename_toSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
+test_dataset = PhylaDataset(input_testing_filename)
 test_loader = DataLoader(test_dataset, 
-                         batch_size = args.batch_size, 
-                         shuffle=True)
-# Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, classifier_DANN.to(device))
-# Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base
-test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
-write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
-             modelFileName_toSave, fileToTestModel)
-print('')
-print(str(args.feature_Num) +'_'+ 
-        str(args.hidden_dim) + 'x' +
-        str(args.dann_hidden_layers_num) + '_' +
-        str(args.feature_layer_size) + '_' +
-        str(args.hidden_dim_2nd) + 'x' +
-        str(args.dann_2nd_hidden_layers_num) + '_' +
-        str(args.pre_output_layer_dim) + '_' +
-        str(args.output_dim))
-print('phylaDANN model testing')
-print(fileToTestModel)
-print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
-print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
-print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
-print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
-print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
+                          batch_size = args.batch_size, 
+                          shuffle=True)               
+test_model_DANN(input_testing_filename, test_loader, test_result_filename_toSave,
+           fileNameToSave_base, classifier_DANN, args, device)
 
-# Initiate a dataloader of the testing file
-fileToTestModel = testing_file_2
-test_dataset = PhylaDataset(fileToTestModel)
+# Testing for biopsy data source file
+input_testing_filename = testing_file_2
+test_result_filename_toSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
+test_dataset = PhylaDataset(input_testing_filename)
 test_loader = DataLoader(test_dataset, 
-                         batch_size = args.batch_size, 
-                         shuffle=True)
-# Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, classifier_DANN.to(device))
-# Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base
-test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
-write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
-             modelFileName_toSave, fileToTestModel)
-print('')
-print('phylaDANN model testing')
-print(fileToTestModel)
-print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
-print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
-print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
-print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
-print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
+                          batch_size = args.batch_size, 
+                          shuffle=True)               
+test_model_DANN(input_testing_filename, test_loader, test_result_filename_toSave,
+           fileNameToSave_base, classifier_DANN, args, device)
 
-# Initiate a dataloader of the testing file
-fileToTestModel = testing_file_3
-test_dataset = PhylaDataset(fileToTestModel)
+# Testing for stool data source file
+input_testing_filename = testing_file_3
+test_result_filename_toSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
+test_dataset = PhylaDataset(input_testing_filename)
 test_loader = DataLoader(test_dataset, 
-                         batch_size = args.batch_size, 
-                         shuffle=True)
-# Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, classifier_DANN.to(device))
-# Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base
-test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
-write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
-             modelFileName_toSave, fileToTestModel)
-print('')
-print('phylaDANN model testing')
-print(fileToTestModel)
-print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
-print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
-print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
-print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
-print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
+                          batch_size = args.batch_size, 
+                          shuffle=True)               
+test_model_DANN(input_testing_filename, test_loader, test_result_filename_toSave,
+           fileNameToSave_base, classifier_DANN, args, device)
 
 # end time
 end = time.time()
 totalSeconds = round(end - start)
 print(f"Runtime of the program is {totalSeconds} seconds")
-
-

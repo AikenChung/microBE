@@ -13,8 +13,9 @@ import time
 import os as os
 import easydict
 import MLP
-# import EarlyStopping
 from pytorchtools import EarlyStopping
+from NN_functions import write_result, save_model, compute_accuracy, test_model
+
 
 #================================== Setting ==================================
 base_path = './'
@@ -23,23 +24,25 @@ usingGoogleCloud = False # if using the local machine, please set 'usingGoogleCl
 if usingGoogleCloud :
     base_path = '/content/gdrive/My Drive/Colab Notebooks/'
 
+# Define the input and validate file
 train_base_file = base_path+'phyla_stool_2840x1177_pmi_0_clr_75p_MAD.csv'
 validate_base_file = base_path+'phyla_stool_401x1177_pmi_0_clr_10p_MAD.csv'
-#train_data_prefix = 'phyla_stool_noCS'
+# Specify the filename tag
 train_data_prefix = 'phyla_stool'
 train_data_surfix_BE_method = 'no_BE'
 
+# Define the filenames for tesing. There are 3 testing files specified here.
 testing_file_1 = base_path+'phyla_all_753x1177_pmi_0_clr_15p_MAD.csv'
 testing_file_2 = base_path+'phyla_biopsy_213x1177_pmi_0_clr_15p_MAD.csv'
 testing_file_3 = base_path+'phyla_stool_540x1177_pmi_0_clr_15p_MAD.csv'
-#testing_file_3 = base_path+'phyla_stool_541x1177_PMI_threshold_0_clr_15p.csv'
 
+# Specifiy the parameters of the MLP
 args = easydict.EasyDict({
         "feature_Num": 1177,        # Number of features (columns) in the input data
         "epochs": 5000,             # Number of iterations to train Model for
         "hidden_dim": 256,          # Size of each hidden layer in Discriminator
-        "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in Discriminator
-        "pre_output_layer_dim": 128,# Size of each hidden layer in Discriminator
+        "mlp_hidden_layers_num": 1, # How many (middle or hidden) layers in MLP model
+        "pre_output_layer_dim": 128,# Size of each hidden layer in MLP model
         "output_dim": 1,            # Size of output layer
         "hidden_dropout": 0.5,      # dropout rate of hidden layer  
         "batch_size": 32,           # Batch size
@@ -48,7 +51,7 @@ args = easydict.EasyDict({
         "adapt_lr_iters": 5,        # how often decrease the learning rate
 })
 
-
+# Construct the filename for the model
 fileNameToSave_base = ('MLP_'+ str(args.feature_Num) +'_'+ 
                                str(args.hidden_dim) + 'x' +
                                str(args.mlp_hidden_layers_num) + '_' +
@@ -62,6 +65,7 @@ fileNameToSave_base = ('MLP_'+ str(args.feature_Num) +'_'+
                                train_data_prefix+'_'+
                                train_data_surfix_BE_method)
 
+# Create folders for results
 if not os.path.exists(base_path+'data'):
     os.makedirs(base_path+'data')
 
@@ -78,11 +82,11 @@ resultFilePath = base_path+'data/MLP_trainedResults/'
 
 
 class PhylaDataset(Dataset):
-    """ Phyla dataset"""
-    """
+    """ 
+    Phyla dataset
     Dataset for binary classification IBD/Healthy
     """
-    # Initialize your data, download, etc.
+    # Initialize the data
     def __init__(self, inputFile):
         ori_data = pd.read_csv(inputFile)
         phyla_input = ori_data[ori_data.columns[1:args.feature_Num+1]]
@@ -123,13 +127,13 @@ def training(model, loader, optimizer, criterion, device):
       optimizer.step()  
           
       running_loss += loss.item()         
-      return running_loss/len(loader)
-       
+      return running_loss/len(loader)       
     print('Finished Training')
 
 
 def validating(model, data_loader, criterion, device):
     model.eval()
+    model.to(device)
     with torch.no_grad():
       pass_loss = 0.0
       for samples, labels in data_loader:
@@ -152,7 +156,7 @@ def run_training_process(model, nb_epochs, train_loader, validate_loader, optimi
   for epoch in progress_bar:
       train_loss = training(model, train_loader, optimizer, criterion, device)
       test_loss = validating(model, validate_loader, criterion, device)
-      validation_dataset_metric = compute_accuracy(validate_loader, model)
+      validation_dataset_metric = compute_accuracy(validate_loader, model, device)
       loss_history.append(
           {"loss": train_loss, "set": "train", "epochs": epoch}
       )
@@ -186,111 +190,8 @@ def run_training_process(model, nb_epochs, train_loader, validate_loader, optimi
   return pd.DataFrame(loss_history)
 
 
-def save_model(model_state, fileName):
-    #print("=> Saving model")
-    torch.save(model_state,fileName)
-
-"""### Define the evaluation metric
-
-We will use several evaluation metrics.
-
-Accuracy = (TP+TN) / (TP+TN+FP+FN)
-Specificity = TN / (TN+FP)
-Recall (Sensitivity) = (TP) / (TP+FN)
-Precision = TP / (TP+FP)
-F1-score = (2*Precision*Recall) / (Precision+Recall)
-MCC = (TP*TN - FP*FN) / sqrt((TP+FN)*(TP+FP)*(TN+FN)*(TN+FP))
-"""
-def compute_accuracy(loader, net):
-    accuracy_compute_history = []
-    TP = 0
-    TN = 0
-    FP = 0
-    FN = 0
-    net.eval()
-    with torch.no_grad():      
-        for data in loader:
-            samples, labels = data
-            samples = samples.to(device)
-            outputs = net(samples)           
-            for i in range(labels.shape[0]):
-                sample_val = labels[i,0]
-                predict_val= outputs[i,0]
-                if sample_val == 1:
-                    if predict_val>0.5:
-                        TP = TP + 1
-                    else:
-                        FN = FN + 1
-                elif sample_val == 0:
-                    if predict_val <= 0.5:
-                        TN = TN + 1
-                    else:
-                        FP = FP + 1
-    recall = 0
-    specificity = 0
-    precision = 0
-    accuracy = 0
-    f1 = 0
-    mcc = 0    
-    if (TP+FN) != 0:
-        recall = TP/(TP+FN) # sensitivity
-    else:
-        recall = 0
-    if (TN+FP) != 0:
-        specificity = TN/(TN+FP)
-    else:
-        specificity = 0
-    if (TP+FP) != 0:
-        precision = TP/(TP+FP)
-    else:
-        precision = 0
-    if (TP+TN+FP+FN) != 0:    
-        accuracy = 100*(TP+TN)/(TP+TN+FP+FN)
-    else:
-        accuracy = 0
-    if (precision+recall) != 0:
-        f1 = (2*precision*recall)/(precision+recall)
-    else:
-        f1 = 0
-    # Matthews correlation coefficient
-    if ((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN) == 0):
-        mcc = 0
-    else:
-        mcc = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)) 
-    
-    accuracy_compute_history.append(
-        {"Accuracy":accuracy,
-         "Precision":precision,
-         "Recall":recall,
-         "F1-score":f1,
-         "MCC":mcc,
-         "Specificity":specificity,
-         "TP": TP, "TN": TN, "FP":FP, "FN": FN
-         }
-    )
-    return accuracy_compute_history
-
-def write_result(fileName, dataObj, modelName, testingFileName):
-    with open(fileName, 'w') as f:
-        theFirstLine = 'Model file: '+modelName+'\n'
-        f.write(theFirstLine)
-        theSecondLine = 'Test file: '+testingFileName+'\n'
-        f.write(theSecondLine)
-        for item in dataObj[0]:
-            strToWrite = "{0}: {1}\n".format(item, np.round(dataObj[0][item], decimals=2))
-            f.write(strToWrite)
-
-def reset_weights(m):
-  '''
-    Try resetting model weights to avoid
-    weight leakage.
-  '''
-  for layer in m.children():
-   if hasattr(layer, 'reset_parameters'):
-    print(f'Reset trainable parameters of layer = {layer}')
-    layer.reset_parameters()
-    
-
+# starting time
+start = time.time()
 # sets device for model and PyTorch tensors
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -301,17 +202,8 @@ Preparing data for training and validaing
 train_dataset = PhylaDataset(train_base_file)
 validate_dataset = PhylaDataset(validate_base_file)
 
-
-"""
-We now need to split our dataset into two parts.
-The **train set** will be used to train our model, and the **validate set** will be used for validation.
-First, let us compute the number of samples to put in each split. Here we choose to keep 70\% of the samples for training and 30\% for testing
-"""
-# starting time
-start = time.time()
-
 # Initilize model, criterion, optimizer. Then train the model for multiclass classification
-classifierMLP = MLP(args.feature_Num, 
+classifierMLP = MLP.MLP(args.feature_Num, 
                              args.hidden_dim, 
                              args.mlp_hidden_layers_num, 
                              args.pre_output_layer_dim, 
@@ -341,25 +233,28 @@ optimizer_mlp = optim.Adam(list(classifierMLP.parameters()),
 # use an exponentially decaying learning rate
 scheduler_mlp= optim.lr_scheduler.ExponentialLR(optimizer_mlp, gamma=0.99)
 
-fileNameToSave_base = fileNameToSave_base
+# Specify a filename for saving the model
 modelNameToSave = modelFilePath + fileNameToSave_base
+
+# Start the training procedure
 training_history = run_training_process(classifierMLP, args.epochs, train_loader, validate_loader, optimizer_mlp, scheduler_mlp, criterion, modelNameToSave, device=device , patience=patience)
 
-train_dataset_metric = compute_accuracy(train_loader, classifierMLP)
+# Compute the training and validating related performance metrics
+train_dataset_metric = compute_accuracy(train_loader, classifierMLP, device)
 train_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_train_result_metric.txt"
-validation_dataset_metric = compute_accuracy(validate_loader, classifierMLP)
+validation_dataset_metric = compute_accuracy(validate_loader, classifierMLP, device)
 validation_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_validation_result_metric.txt"
 
-write_result(train_dataset_metric_nameToSave, train_dataset_metric, fileNameToSave_base, train_base_file)
+# Save the training and validating related results
+write_result(train_dataset_metric_nameToSave, train_dataset_metric, fileNameToSave_base, train_base_file, args)
 validationFileName = train_base_file[0:len(train_base_file)-4]+"_validation"
-write_result(validation_dataset_metric_nameToSave, validation_dataset_metric, fileNameToSave_base, validationFileName)
+write_result(validation_dataset_metric_nameToSave, validation_dataset_metric, fileNameToSave_base, validationFileName, args)
         
 print('Accuracy of the MLP on the ' + str(len(train_loader)) + ' train samples: %d %%' % (train_dataset_metric[0]["Accuracy"]))
-
 print('Accuracy of the MLP on the ' + str(len(validate_loader)) + ' validation samples: %d %%' % (validation_dataset_metric[0]["Accuracy"]))
-
 training_history.head()
 
+# Plot the training and validaing loss
 plt.figure()
 ax = sns.lineplot(x="epochs", y="loss", hue= "set", data=training_history)
 fig_trainHistory = ax.get_figure()
@@ -370,75 +265,38 @@ fig_trainHistory.savefig(training_history_plotName)
 """
 Run the testing procedure.
 """
-# Initiate a dataloader of the testing file
-fileToTestModel = testing_file_1
-test_dataset = PhylaDataset(fileToTestModel)
+# Testing for mixed data source (stool+biopsy) file
+input_testing_filename = testing_file_1
+test_result_filename_toSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
+test_dataset = PhylaDataset(input_testing_filename)
 test_loader = DataLoader(test_dataset, 
-                         batch_size = args.batch_size, 
-                         shuffle=True)
-# Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, classifierMLP.to(device))
-# Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base
-test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
-write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
-             modelFileName_toSave, fileToTestModel)
-print('')
-print(str(args.feature_Num) +'_'+ 
-        str(args.hidden_dim) + 'x' +
-        str(args.mlp_hidden_layers_num) + '_' +
-        str(args.pre_output_layer_dim) + '_' +
-        str(args.output_dim))
-print(train_base_file)
-print(fileToTestModel)
-print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
-print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
-print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
-print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
-print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
+                          batch_size = args.batch_size, 
+                          shuffle=True)               
+test_model(input_testing_filename, test_loader, test_result_filename_toSave,
+           fileNameToSave_base, classifierMLP, args, device)
 
-# Initiate a dataloader of the testing file
-fileToTestModel = testing_file_2
-test_dataset = PhylaDataset(fileToTestModel)
+# Testing for biopsy data source file
+input_testing_filename = testing_file_2
+test_result_filename_toSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
+test_dataset = PhylaDataset(input_testing_filename)
 test_loader = DataLoader(test_dataset, 
-                         batch_size = args.batch_size, 
-                         shuffle=True)
-# Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, classifierMLP.to(device))
-# Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base
-test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
-write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
-             modelFileName_toSave, fileToTestModel)
-print('')
-print(train_base_file)
-print(fileToTestModel)
-print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
-print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
-print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
-print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
-print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
+                          batch_size = args.batch_size, 
+                          shuffle=True)               
+test_model(input_testing_filename, test_loader, test_result_filename_toSave,
+           fileNameToSave_base, classifierMLP, args, device)
 
-# Initiate a dataloader of the testing file
-fileToTestModel = testing_file_3
-test_dataset = PhylaDataset(fileToTestModel)
+# Testing for stool data source file
+input_testing_filename = testing_file_3
+test_result_filename_toSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
+test_dataset = PhylaDataset(input_testing_filename)
 test_loader = DataLoader(test_dataset, 
-                         batch_size = args.batch_size, 
-                         shuffle=True)
-# Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, classifierMLP.to(device))
-# Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base
-test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
-write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
-             modelFileName_toSave, fileToTestModel)
-print('')
-print(train_base_file)
-print(fileToTestModel)
-print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
-print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
-print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
-print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
-print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
+                          batch_size = args.batch_size, 
+                          shuffle=True)               
+test_model(input_testing_filename, test_loader, test_result_filename_toSave,
+           fileNameToSave_base, classifierMLP, args, device)
 
 
+# end time
+end = time.time()
+totalSeconds = round(end - start)
+print(f"Runtime of the program is {totalSeconds} seconds")
