@@ -358,7 +358,7 @@ start = time.time()
 Start to train the DANN model
 """
 # Initilize model, criterion, optimizer. Then train the model
-classifier_DANN = phylaDANN.DANN(args.feature_Num, args.hidden_dim, 
+classifier_DANN = DANN.DANN(args.feature_Num, args.hidden_dim, 
                          args.dann_hidden_layers_num, args.feature_layer_size,
                          args.hidden_dim_2nd, args.dann_2nd_hidden_layers_num,
                          args.pre_output_layer_dim, args.output_dim, args.hidden_dropout)
