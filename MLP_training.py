@@ -311,7 +311,7 @@ First, let us compute the number of samples to put in each split. Here we choose
 start = time.time()
 
 # Initilize model, criterion, optimizer. Then train the model for multiclass classification
-classifierMLP = phylaMLP.MLP(args.feature_Num, 
+classifierMLP = MLP(args.feature_Num, 
                              args.hidden_dim, 
                              args.mlp_hidden_layers_num, 
                              args.pre_output_layer_dim, 
