@@ -10,7 +10,7 @@ class MLP(nn.Module):
     def __init__(self, input_dim=1177, hidden_dim=256, 
                  hidden_layer_num=1, 
                  pre_output_dim = 64, 
-                 output_dim=1):        
+                 output_dim=1, dropout=0.1):        
         super(MLP, self).__init__()        
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(input_dim, hidden_dim))
@@ -18,12 +18,12 @@ class MLP(nn.Module):
             self.layers.append(nn.Linear(hidden_dim, hidden_dim))
         self.layers.append(nn.Linear(hidden_dim, pre_output_dim))
         self.layers.append(nn.Linear(pre_output_dim, output_dim))
-        # Define proportion of neurons to dropout
-        self.dropout = nn.Dropout(0.2)
+        # Define the rate of neurons to dropout
+        self.dropout = nn.Dropout(dropout)
     def forward(self, x):
-        # Apply dropout in the input layer
-        x = self.dropout(x)
         for layer in self.layers[:-1]:
             x = torch.relu(layer(x))
+            # Apply dropout in the hidden layer
+            x = self.dropout(x)
         out = self.layers[-1](x)
         return out
