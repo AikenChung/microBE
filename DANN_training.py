@@ -12,45 +12,48 @@ from tqdm import tqdm
 import time
 import os as os
 import easydict
+import json
 import phylaDANN
-from sklearn.model_selection import KFold
-# import EarlyStopping
 from pytorchtools import EarlyStopping
 
 #================================== Setting ==================================
 base_path = './'
-usingGoogleCloud = True # if using the local machine, please set 'usingGoogleCloud' to False
+usingGoogleCloud = False # if using the local machine, please set 'usingGoogleCloud' to False
 
 if usingGoogleCloud :
     base_path = '/content/gdrive/My Drive/Colab Notebooks/'
 
-source_data_file = base_path+'phyla_stool_3240x1177_PMI_threshold_0_clr_85p.csv'
+source_data_file = base_path+'phyla_stool_2840x1177_pmi_0_clr_75p_MAD.csv'
 source_data_prefix = 'phyla_stool'
 source_data_surfix_BE_method = 'no_BE'
 
-target_data_file = base_path+'phyla_biopsy_1273x1177_PMI_threshold_0_clr_85p.csv'
+target_data_file = base_path+'phyla_biopsy_1109x1177_pmi_0_clr_75p_MAD.csv'
 target_data_prefix = 'phyla_biopsy'
 target_data_surfix_BE_method = 'no_BE'
 
-testing_file_s = base_path+'phyla_stool_541x1177_PMI_threshold_0_clr_15p.csv'
-testing_file_t = base_path+'phyla_biopsy_213x1177_PMI_threshold_0_clr_15p.csv'
-testing_file_all = base_path+'phyla_all_753x1177_PMI_threshold_0_clr_15p.csv'
+source_validate_file = base_path+'phyla_stool_401x1177_pmi_0_clr_10p_MAD.csv'
+target_validate_file = base_path+'phyla_biopsy_164x1177_pmi_0_clr_10p_MAD.csv'
+
+testing_file_1 = base_path+'phyla_all_753x1177_pmi_0_clr_15p_MAD.csv'
+testing_file_2 = base_path+'phyla_biopsy_213x1177_pmi_0_clr_15p_MAD.csv'
+testing_file_3 = base_path+'phyla_stool_540x1177_pmi_0_clr_15p_MAD.csv'
 
 args = easydict.EasyDict({
-        "feature_Num": 1177,         # Number of features (columns) in the input data
-        "epochs": 5000,              # Number of iterations to train Model for
-        "hidden_dim": 512,           # Size of each hidden layer in DANN
+        "feature_Num": 1177,             # Number of features (columns) in the input data
+        "epochs": 5000,                  # Number of iterations to train Model for
+        "hidden_dim": 512,               # Size of each hidden layer in DANN
         "dann_hidden_layers_num": 1,     # How many (middle or hidden) layers in DANN
-        "feature_layer_size": 512,       # Size of feature_layer in the end of feature_extractor
-        "hidden_dim_2nd": 128,           # Size of each hidden layer in DANN
-        "dann_2nd_hidden_layers_num": 1, # How many (middle or hidden) layers in DANN
-        "pre_output_layer_dim": 128, # Size of pre-output layer in DANN
-        "output_dim": 1,            # Size of output layer      
-        "batch_size": 32,           # Batch size
-        "learning_rate": 0.0001,     # Learning rate for the optimizer
-        "beta1": 0.5,               # 'beta1' for the optimizer
-        "adapt_lr_iters": 10,        # how often decrease the learning rate
-        "normalization_method":'Median' # Median, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
+        "feature_layer_size": 256,       # Size of feature_layer in the end of feature_extractor
+        "hidden_dim_2nd": 256,           # Size of each hidden layer in DANN
+        "dann_2nd_hidden_layers_num": 2, # How many (middle or hidden) layers in DANN
+        "pre_output_layer_dim": 128,     # Size of pre-output layer in DANN
+        "output_dim": 1,                 # Size of output layer
+        "hidden_dropout": 0.5,           # dropout rate of hidden layer  
+        "batch_size": 32,                # Batch size
+        "learning_rate": 0.0001,         # Learning rate for the optimizer
+        "beta1": 0.5,                    # 'beta1' for the optimizer
+        "adapt_lr_iters": 10,            # how often decrease the learning rate
+        "normalization_method":'Median'  # Median, Stand, or minMax. Normalization method applied in the initailization of phyla dataset
 })
 
 fileNameToSave_base = ('DANN_'+ str(args.feature_Num) +'_'+ 
@@ -59,7 +62,8 @@ fileNameToSave_base = ('DANN_'+ str(args.feature_Num) +'_'+
                                str(args.feature_layer_size) + '_' +
                                str(args.pre_output_layer_dim) + '_' +
                                str(args.output_dim) + '_epoch'+
-                               str(args.epochs) + '_' +
+                               str(args.epochs) + '_dropout_'+
+                               str(args.hidden_dropout).replace('.','p')+'_'+
                                source_data_prefix + '_' +
                                source_data_surfix_BE_method + '_' +
                                target_data_prefix + '_' +
@@ -81,14 +85,13 @@ resultFilePath = base_path+'data/DANN_trainedResults/'
 #============================== End of Setting ================================
 
 
-
 class PhylaDataset(Dataset):
     """ 
     Phyla dataset
     Dataset for binary classification IBD/Healthy
     """
     # Initialize your data, download, etc.
-    def __init__(self, inputFile, norm_method):
+    def __init__(self, inputFile):
         ori_data = pd.read_csv(inputFile)
         phyla_input = ori_data[ori_data.columns[1:args.feature_Num+1]]
         phyla_input = phyla_input.assign(diagnosis=ori_data[ori_data.columns[args.feature_Num+2]])
@@ -96,28 +99,6 @@ class PhylaDataset(Dataset):
         self.len = phyla_input.shape[0]
         self.count_data = from_numpy(phyla_input[:, 0:-1])
         self.diagnosis_data = from_numpy(phyla_input[:, [-1]]) # 0: Control, 1: IBD
-        # feature-wise normalization
-        self.count_data = self.normalization(self.count_data, norm_method)
-
-    def normalization(self, inputTensor, method):
-        # feature-wise normalization
-        if method == 'Stand':
-            # Standardization
-            colMean = inputTensor.mean(0, keepdim=True)[0]
-            colStd = inputTensor.std(0, keepdim=True)[0]
-            outputTensor = (inputTensor - colMean) / colStd
-        elif method == 'minMax':
-            # Min-Max
-            colMin = inputTensor.min(0, keepdim=True)[0]
-            colMax = inputTensor.max(0, keepdim=True)[0]    
-            outputTensor = (inputTensor - colMin) / (colMax - colMin)
-        else:
-            # Median Normalization
-            colMedian = inputTensor.median(0, keepdim=True)[0]
-            colMAD = torch.abs(inputTensor-colMedian)
-            colMAD = colMAD.median(0, keepdim=True)[0]
-            outputTensor = (inputTensor - colMedian) / colMAD
-        return outputTensor
 
     def __getitem__(self, index):
         samples = self.count_data[index]
@@ -127,7 +108,6 @@ class PhylaDataset(Dataset):
     def __len__(self):
         return self.len
     
-
 
 def training(model, loader_S, loader_T, optimizer, criterion, device, epoch, nb_epoch):
     running_loss = 0.0
@@ -187,17 +167,17 @@ def training(model, loader_S, loader_T, optimizer, criterion, device, epoch, nb_
 
 
 def validating(model, data_loader, criterion, device):
-
-  with torch.no_grad():
-    pass_loss = 0.0
-    for samples, labels in data_loader:
-        samples = samples.to(device)
-        labels = labels.to(device)
-        class_output, _ = model(samples, 1)
-        loss = criterion(class_output, labels)
-        pass_loss += loss.item()
-    
-    return pass_loss/len(data_loader)
+    model.eval()
+    with torch.no_grad():
+      pass_loss = 0.0
+      for samples, labels in data_loader:
+          samples = samples.to(device)
+          labels = labels.to(device)
+          class_output, _ = model(samples, 1)
+          loss = criterion(class_output, labels)
+          pass_loss += loss.item()
+      
+      return pass_loss/len(data_loader)
 
 
 def run_training_process(model, nb_epochs, dataloader_source, 
@@ -273,7 +253,7 @@ def compute_accuracy(loader, net):
     TN = 0
     FP = 0
     FN = 0
-
+    net.eval()
     with torch.no_grad():      
         for data in loader:
             samples, labels = data
@@ -345,6 +325,8 @@ def write_result(fileName, dataObj, modelName, testingFileName):
         for item in dataObj[0]:
             strToWrite = "{0}: {1}\n".format(item, np.round(dataObj[0][item], decimals=2))
             f.write(strToWrite)
+        f.write(json.dumps(args))
+        f.write('\n')
 
 def reset_weights(m):
   '''
@@ -363,10 +345,11 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Initilize phyla dataset
-soure_dataset = PhylaDataset(source_data_file, args.normalization_method)
-num_cohorts, num_genus = soure_dataset.count_data.shape
+train_S_dataset = PhylaDataset(source_data_file)
+train_T_dataset = PhylaDataset(target_data_file)
 
-target_dataset = PhylaDataset(target_data_file, args.normalization_method)
+validate_S_dataset = PhylaDataset(source_validate_file)
+validate_T_dataset = PhylaDataset(target_validate_file)
 
 # starting time
 start = time.time()
@@ -378,176 +361,91 @@ Start to train the DANN model
 classifier_DANN = phylaDANN.DANN(args.feature_Num, args.hidden_dim, 
                          args.dann_hidden_layers_num, args.feature_layer_size,
                          args.hidden_dim_2nd, args.dann_2nd_hidden_layers_num,
-                         args.pre_output_layer_dim, args.output_dim)
+                         args.pre_output_layer_dim, args.output_dim, args.hidden_dropout)
 
-# Configuration options
-k_folds = 5
-  
-# Define the K-fold Cross Validator
-kfold = KFold(n_splits=k_folds, shuffle=True)
 
 # early stopping patience; how long to wait after last time validation loss improved.
-patience = 5000
+patience = 20
 
-best_validate_accuracy = 0
-best_fold = 0
-import copy
-best_model = copy.deepcopy(classifier_DANN)
-# K-fold Cross Validation model evaluation
-for i in range(k_folds):
-    i = i + 1
-    # Print
-    print('')
-    print('--------------------------------')
-    print(f'FOLD {i}')
-    print('--------------------------------')
-    """
-    Split the dataset into two parts.
-    The **train set** will be used to train our model, and the **validate set** will be used for validation.
-    First, let us compute the number of samples to put in each split. Here we choose to keep 70\% of the samples for training and 30\% for testing
-    """
-    kFold_ratio_num = 1 - (1/k_folds)
-    train_set_size = int(len(soure_dataset) * kFold_ratio_num)
-    validate_set_size = len(soure_dataset) - train_set_size
-    
-    target_set_size = int(len(target_dataset) * kFold_ratio_num)
-    validate_T_set_size = len(target_dataset) - target_set_size
-    
-    """
-    Randomly split the dataset into two parts for preparing data for training and validaing
-    """
-    
-    train_S_dataset, validate_S_dataset = torch.utils.data.random_split(soure_dataset, 
-                                                                lengths=[train_set_size, validate_set_size], 
-                                                                generator=torch.Generator().manual_seed(0))
-    train_T_dataset, validate_T_dataset = torch.utils.data.random_split(target_dataset, 
-                                                                lengths=[target_set_size, validate_T_set_size], 
-                                                                generator=torch.Generator().manual_seed(0))
-    
-    """
-    Initialize dataloader objects. 
-    These dataloaders will provide data one batch at a time, which is convenient to train our machine learning model.
-    """
-    
-    train_S_loader = DataLoader(train_S_dataset, batch_size = args.batch_size, shuffle=True)
-    validate_S_loader = DataLoader(validate_S_dataset, batch_size = args.batch_size, shuffle=True)
-    
-    train_T_loader = DataLoader(train_T_dataset, batch_size = args.batch_size, shuffle=True)
-    validate_T_loader = DataLoader(validate_T_dataset, batch_size = args.batch_size, shuffle=True)
-    classifier_DANN.apply(reset_weights)
-    # cost function (for predicting labels)
-    criterion = nn.BCEWithLogitsLoss()
-    
-    # setup optimizer
-    optimizer_dann = optim.Adam(list(classifier_DANN.parameters()), 
-                                lr=args.learning_rate, betas=(args.beta1, 0.999))
-    # use an exponentially decaying learning rate
-    scheduler_dann= optim.lr_scheduler.ExponentialLR(optimizer_dann, gamma=0.99)
-    
-    modelNameToSave = modelFilePath + fileNameToSave_base
-    training_history = run_training_process(classifier_DANN, args.epochs, 
-                                            train_S_loader, train_T_loader, 
-                                            validate_S_loader, validate_T_loader, 
-                                            optimizer_dann, scheduler_dann, 
-                                            criterion, modelNameToSave,
-                                            device=device, patience=patience )
-    
-    train_metric_result_nameToSave = resultFilePath + fileNameToSave_base + "_train_result_metric.txt"
-    train_S_metric = compute_accuracy(train_S_loader, classifier_DANN)
-    validation_S_metric = compute_accuracy(validate_S_loader, classifier_DANN)
-    train_T_metric = compute_accuracy(train_T_loader, classifier_DANN)
-    validation_T_metric = compute_accuracy(validate_T_loader, classifier_DANN)
-    
-    
-    write_result(train_metric_result_nameToSave, train_S_metric, fileNameToSave_base, source_data_file)
-    write_result(train_metric_result_nameToSave, validation_S_metric, fileNameToSave_base, source_data_file)
-    write_result(train_metric_result_nameToSave, train_T_metric, fileNameToSave_base, target_data_file)
-    write_result(train_metric_result_nameToSave, validation_T_metric, fileNameToSave_base, target_data_file)
-            
-    print('Accuracy of the DANN on the ' + str(len(train_S_dataset)) + ' train samples: %d %%' % train_S_metric[0]["Accuracy"])
-    print('Accuracy of the DANN on the ' + str(len(validate_S_dataset)) + ' validation samples: %d %%' % validation_S_metric[0]["Accuracy"])
-    print('Accuracy of the DANN on the ' + str(len(train_T_dataset)) + ' target samples: %d %%' % train_T_metric[0]["Accuracy"])
-    print('Accuracy of the DANN on the ' + str(len(validate_T_dataset)) + ' target validation samples: %d %%' % validation_T_metric[0]["Accuracy"])
-    training_history.head()
-    
-    if best_validate_accuracy < validation_T_metric[0]["Accuracy"]:
-        best_validate_accuracy = validation_T_metric[0]["Accuracy"]
-        best_fold = i
-        best_model = copy.deepcopy(classifier_DANN)
-    
-    
-    plt.figure()
-    ax = sns.lineplot(x="epochs", y="loss", hue= "set", data=training_history)
-    fig_trainHistory = ax.get_figure()
-    training_history_plotName = resultFilePath + fileNameToSave_base +'_training_history.png'
-    fig_trainHistory.savefig(training_history_plotName)
+"""
+Initialize dataloader objects. 
+These dataloaders will provide data one batch at a time, which is convenient to train our machine learning model.
+"""
+
+train_S_loader = DataLoader(train_S_dataset, batch_size = args.batch_size, shuffle=True)
+validate_S_loader = DataLoader(validate_S_dataset, batch_size = args.batch_size, shuffle=True)
+
+train_T_loader = DataLoader(train_T_dataset, batch_size = args.batch_size, shuffle=True)
+validate_T_loader = DataLoader(validate_T_dataset, batch_size = args.batch_size, shuffle=True)
+# cost function (for predicting labels)
+criterion = nn.BCEWithLogitsLoss()
+
+# setup optimizer
+optimizer_dann = optim.Adam(list(classifier_DANN.parameters()), 
+                            lr=args.learning_rate, betas=(args.beta1, 0.999))
+# use an exponentially decaying learning rate
+scheduler_dann= optim.lr_scheduler.ExponentialLR(optimizer_dann, gamma=0.99)
+
+modelNameToSave = modelFilePath + fileNameToSave_base
+training_history = run_training_process(classifier_DANN, args.epochs, 
+                                        train_S_loader, train_T_loader, 
+                                        validate_S_loader, validate_T_loader, 
+                                        optimizer_dann, scheduler_dann, 
+                                        criterion, modelNameToSave,
+                                        device=device, patience=patience )
+
+train_metric_result_nameToSave = resultFilePath + fileNameToSave_base + "_train_result_metric.txt"
+train_S_metric = compute_accuracy(train_S_loader, classifier_DANN)
+validation_S_metric = compute_accuracy(validate_S_loader, classifier_DANN)
+train_T_metric = compute_accuracy(train_T_loader, classifier_DANN)
+validation_T_metric = compute_accuracy(validate_T_loader, classifier_DANN)
 
 
-print('')
-print('The best validation accuracy: ' + str(np.round(best_validate_accuracy, decimals=2)) + '% at fold-'+str(best_fold))
+write_result(train_metric_result_nameToSave, train_S_metric, fileNameToSave_base, source_data_file)
+write_result(train_metric_result_nameToSave, validation_S_metric, fileNameToSave_base, source_data_file)
+write_result(train_metric_result_nameToSave, train_T_metric, fileNameToSave_base, target_data_file)
+write_result(train_metric_result_nameToSave, validation_T_metric, fileNameToSave_base, target_data_file)
+        
+print('Accuracy of the DANN on the ' + str(len(train_S_dataset)) + ' train samples: %d %%' % train_S_metric[0]["Accuracy"])
+print('Accuracy of the DANN on the ' + str(len(validate_S_dataset)) + ' validation samples: %d %%' % validation_S_metric[0]["Accuracy"])
+print('Accuracy of the DANN on the ' + str(len(train_T_dataset)) + ' target samples: %d %%' % train_T_metric[0]["Accuracy"])
+print('Accuracy of the DANN on the ' + str(len(validate_T_dataset)) + ' target validation samples: %d %%' % validation_T_metric[0]["Accuracy"])
+training_history.head()
+
+
+plt.figure()
+ax = sns.lineplot(x="epochs", y="loss", hue= "set", data=training_history)
+fig_trainHistory = ax.get_figure()
+training_history_plotName = resultFilePath + fileNameToSave_base +'_training_history.png'
+fig_trainHistory.savefig(training_history_plotName)
+
 
 """
 Run the testing procedure.
 """
 # Initiate a dataloader of the testing file
-fileToTestModel = testing_file_s
-test_dataset_s = PhylaDataset(fileToTestModel, 'Median')
-test_loader = DataLoader(test_dataset_s, 
-                         batch_size = args.batch_size, 
-                         shuffle=True)
-# Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, best_model.to(device))
-# Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base + '_fold'+str(best_fold)
-test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
-write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
-             modelFileName_toSave, fileToTestModel)
-print('')
-print('Testing source domain data =>')
-print(fileToTestModel)
-print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
-print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
-print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
-print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
-print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
-
-# Initiate a dataloader of the testing file
-fileToTestModel = testing_file_t
-test_dataset_t = PhylaDataset(fileToTestModel, 'Median')
-test_loader = DataLoader(test_dataset_t, 
-                         batch_size = args.batch_size, 
-                         shuffle=True)
-# Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, best_model.to(device))
-# Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base + '_fold'+str(best_fold)
-test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
-write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
-             modelFileName_toSave, fileToTestModel)
-print('')
-print('Testing target domain data =>')
-print(fileToTestModel)
-print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
-print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
-print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
-print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
-print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
-
-# Initiate a dataloader of the testing file
-fileToTestModel = testing_file_all
-test_dataset = PhylaDataset(fileToTestModel, 'Median')
+fileToTestModel = testing_file_1
+test_dataset = PhylaDataset(fileToTestModel)
 test_loader = DataLoader(test_dataset, 
                          batch_size = args.batch_size, 
                          shuffle=True)
 # Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, best_model.to(device))
+test_dataset_metric = compute_accuracy(test_loader, classifier_DANN.to(device))
 # Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base + '_fold'+str(best_fold)
+modelFileName_toSave = fileNameToSave_base
 test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
 write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
              modelFileName_toSave, fileToTestModel)
 print('')
-print('Testing mix domain data =>')
+print(str(args.feature_Num) +'_'+ 
+        str(args.hidden_dim) + 'x' +
+        str(args.dann_hidden_layers_num) + '_' +
+        str(args.feature_layer_size) + '_' +
+        str(args.hidden_dim_2nd) + 'x' +
+        str(args.dann_2nd_hidden_layers_num) + '_' +
+        str(args.pre_output_layer_dim) + '_' +
+        str(args.output_dim))
+print('phylaDANN model testing')
 print(fileToTestModel)
 print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
 print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
@@ -555,23 +453,43 @@ print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
 print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
 print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
 
-
-
-
 # Initiate a dataloader of the testing file
-test_dataset_mix = torch.utils.data.ConcatDataset([test_dataset_s, test_dataset_t])
-test_loader = DataLoader(test_dataset_mix, 
+fileToTestModel = testing_file_2
+test_dataset = PhylaDataset(fileToTestModel)
+test_loader = DataLoader(test_dataset, 
                          batch_size = args.batch_size, 
                          shuffle=True)
 # Test the loaded model
-test_dataset_metric = compute_accuracy(test_loader, best_model.to(device))
+test_dataset_metric = compute_accuracy(test_loader, classifier_DANN.to(device))
 # Save the testing metrics to a text file
-modelFileName_toSave = fileNameToSave_base + '_fold'+str(best_fold)
+modelFileName_toSave = fileNameToSave_base
 test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
 write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
              modelFileName_toSave, fileToTestModel)
 print('')
-print('Testing mix of source and target domain data =>')
+print('phylaDANN model testing')
+print(fileToTestModel)
+print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
+print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
+print('Recall:', np.round(test_dataset_metric[0]['Recall'], decimals=2))
+print('F1-score:', np.round(test_dataset_metric[0]['F1-score'], decimals=2))
+print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
+
+# Initiate a dataloader of the testing file
+fileToTestModel = testing_file_3
+test_dataset = PhylaDataset(fileToTestModel)
+test_loader = DataLoader(test_dataset, 
+                         batch_size = args.batch_size, 
+                         shuffle=True)
+# Test the loaded model
+test_dataset_metric = compute_accuracy(test_loader, classifier_DANN.to(device))
+# Save the testing metrics to a text file
+modelFileName_toSave = fileNameToSave_base
+test_dataset_metric_nameToSave = resultFilePath + fileNameToSave_base + "_test_result_metric.txt"
+write_result(test_dataset_metric_nameToSave, test_dataset_metric, 
+             modelFileName_toSave, fileToTestModel)
+print('')
+print('phylaDANN model testing')
 print(fileToTestModel)
 print('Accuracy:', np.round(test_dataset_metric[0]['Accuracy'], decimals=2), '%')
 print('Precision:', np.round(test_dataset_metric[0]['Precision'], decimals=2))
@@ -583,4 +501,5 @@ print('MCC:', np.round(test_dataset_metric[0]['MCC'], decimals=2),'\n')
 end = time.time()
 totalSeconds = round(end - start)
 print(f"Runtime of the program is {totalSeconds} seconds")
+
 

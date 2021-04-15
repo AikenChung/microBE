@@ -9,7 +9,7 @@ class DANN(nn.Module):
 
     def __init__(self, input_size=1177, hidden_size=512, hidden_layer_num=1, 
                  feature_layer_size=512, hidden_size_2nd=256, hidden_layer_2nd_num=1,
-                 pre_output_size=32, output_size=1):
+                 pre_output_size=32, output_size=1, dropout=0.1):
         super(DANN, self).__init__()
         self.LogSoftmax = nn.LogSoftmax(dim=1)
         self.hidden_layer_num = hidden_layer_num
@@ -34,27 +34,29 @@ class DANN(nn.Module):
         self.domain_classifier_layer.append(nn.Linear(hidden_size_2nd, pre_output_size))
         self.domain_classifier_layer.append(nn.Linear(pre_output_size, output_size))       
         # Define proportion of neurons to dropout
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(dropout)
         
-    def feature_extractor(self, x):
-        # Apply dropout in the input layer
-        x = self.dropout(x)
+    def feature_extractor(self, x):       
         for layer in self.feature_extractor_layer[:-1]:
             x = F.relu(layer(x))
+            # Apply dropout in the hidden layer
+            x = self.dropout(x)
         features = F.relu(self.feature_extractor_layer[-1](x))
         return features
     
     def class_classifier(self, x):
-        x = self.dropout(x)
         for layer in self.class_classifier_layer[:-1]:
             x = F.relu(layer(x))
+            # Apply dropout in the hidden layer
+            x = self.dropout(x)
         class_predict = self.class_classifier_layer[-1](x)
         return class_predict
     
     def domain_classifier(self, x):
-        x = self.dropout(x)
         for layer in self.domain_classifier_layer[:-1]:
             x = F.relu(layer(x))
+            # Apply dropout in the hidden layer
+            x = self.dropout(x)
         dimain_predict = self.domain_classifier_layer[-1](x)
         return dimain_predict
     
@@ -67,3 +69,4 @@ class DANN(nn.Module):
         class_predict = self.class_classifier(features)
         dimain_predict = self.domain_classifier(reverse_feature)
         return class_predict, dimain_predict
+
