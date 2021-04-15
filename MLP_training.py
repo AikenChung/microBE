@@ -12,7 +12,7 @@ from tqdm import tqdm
 import time
 import os as os
 import easydict
-import phylaMLP
+import MLP
 # import EarlyStopping
 from pytorchtools import EarlyStopping
 
