@@ -1,5 +1,5 @@
 # microBE
-A deep learning model to classify individuals as having IBD or being healthy through their microbiota data.
+A deep learning model to classify between microbiota of healthy and IBD patients.
 
 ## Preprocessing the data
 The scripts used to preprocess data with pointwise mutual information and centered log-ratio (CLR) normalization can be found in `/preprocessing/Data_preprocessing_functions.py`. Three scaling methods were explored: standardization (using mean and standard deviation), min-max, and median absolute deviation (MAD), which can be found in `/preprocessing/normalization.py` (converted from .ipynb to .py).
