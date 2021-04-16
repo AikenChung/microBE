@@ -5,7 +5,7 @@ A deep learning model to classify individuals as having IBD or being healthy thr
 The scripts used to preprocess data with pointwise mutual information and centered log-ratio (CLR) normalization can be found in `/preprocessing/Data_preprocessing_functions.py`. Three scaling methods were explored: standardization (using mean and standard deviation), min-max, and median absolute deviation (MAD), which can be found in `/preprocessing/normalization.py` (converted from .ipynb to .py).
 ## Classifers
 
-Several traditional classifiers as well as VAEs were implemented to handle the healthy/diseased classification as well as batch effects. They can be found under `/classifiers`
+Several traditional classifiers as well as VAEs were implemented to handle the healthy/diseased classification as well as batch effects. They can be found under `/classifiers`.
 
 - Logistic Regression
 - SVM (Linear and RBF)
