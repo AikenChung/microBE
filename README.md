@@ -12,7 +12,7 @@ Several traditional classifiers as well as VAEs were implemented to handle the h
 - RF
 - MLP
 - DANN (Domain Adaptation Neural Net)
-- DeepMicro (tailored DM.py file for predefined training and test sets, for more information on how to implement: https://github.com/minoh0201/DeepMicro)
+- DeepMicro (modified DM.py file for predefined training and test sets, for more information on how to implement: https://github.com/minoh0201/DeepMicro)
 
 
 ## System Diagram
